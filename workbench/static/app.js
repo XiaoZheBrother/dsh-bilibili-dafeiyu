@@ -55,6 +55,7 @@ function operationPresentation(record){
  return {title,badge,body,started,finished};
 }
 function render(){if(!data)return;
+ $('#media-drawer').hidden=tab!=='creations';
  const search=$('#search').value.trim().toLocaleLowerCase();const match=x=>!search||JSON.stringify(x).toLocaleLowerCase().includes(search);
  $('#section-kicker').textContent=tabs[tab][0];$('#section-title').textContent=tabs[tab][1];
  const interests=data.latest?.exploration?.interests||[];

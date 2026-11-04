@@ -63,6 +63,8 @@ def tool():
     def deco(fn):
         if fn.__name__ in {'bili_circle_reply', 'bili_send_dynamic', 'bili_upload_video', 'bili_upload_video_multi', 'bili_send_opus', 'bili_send_message', 'bili_like', 'bili_fav'}:
             return fn
+        if fn.__name__ == "feiyu_send_danmaku" and fn.__name__ not in _ALLOWED:
+            return fn
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
         from character_bridge import observe
@@ -710,7 +712,7 @@ async def bili_circle_reply(bvid: str, rpid: int, text: str) -> str:
 # ========== Tool 3: 获取字幕 ==========
 
 @tool()
-async def bili_subtitle(bvid: str) -> str:
+async def bili_subtitle(bvid: str, page: int = 1) -> str:
     """
     获取B站视频的AI字幕（语音转文字）
 
@@ -724,19 +726,17 @@ async def bili_subtitle(bvid: str) -> str:
     v = video.Video(bvid=bvid, credential=cred)
 
     info = await v.get_info()
-    cid = info.get("cid", 0)
-    if not cid and info.get("pages"):
-        cid = info["pages"][0].get("cid", 0)
-
-    if not cid:
-        return json.dumps({"error": "无法获取cid"}, ensure_ascii=False)
-
-    _read_video[bvid] = "no_subtitles"  # metadata is still required if subtitle retrieval fails
+    pages = info.get("pages") or [{"cid":info.get("cid")}]
+    if not 1 <= page <= len(pages) or not pages[page-1].get("cid"):
+        return json.dumps({"error":"无法获取该分 P"},ensure_ascii=False)
+    cid = pages[page-1]["cid"]
+    _subtitle_times.pop((bvid,page),None)
+    if page == 1:
+        _read_video[bvid] = "no_subtitles"
     subtitle_list = await v.get_subtitle(cid=cid)
     subtitles = subtitle_list.get("subtitles", [])
 
     if not subtitles:
-        _read_video[bvid] = "no_subtitles"
         return json.dumps({"message": "该视频没有字幕"}, ensure_ascii=False)
 
     # 优先AI中文字幕
@@ -760,18 +760,40 @@ async def bili_subtitle(bvid: str) -> str:
 
     texts = [item.get("content", "") for item in sub_data.get("body", [])]
     full_text = "\n".join(texts)
-    _read_video[bvid] = "subtitles" if full_text.strip() else "no_subtitles"
+    if page == 1:
+        _read_video[bvid] = "subtitles" if full_text.strip() else "no_subtitles"
+    timed = []
+    if "feiyu_send_danmaku" in _ALLOWED:
+        for item in sub_data.get("body",[]):
+            start,end = item.get("from"),item.get("to")
+            if isinstance(start,(float,int)) and isinstance(end,(float,int)) and 0 <= start <= end and item.get("content"):
+                timed.append({"start":start,"end":end,"text":item["content"]})
+        _subtitle_times[bvid,page] = [(row["start"],row["end"]) for row in timed]
 
     return json.dumps({
         "bvid": bvid,
         "title": info.get("title", ""),
         "language": target.get("lan_doc", ""),
+        **({"timed":timed,"page":page} if timed else {}),
         "segments": len(texts),
         "text": full_text,
     }, ensure_ascii=False)
 
 
 # ========== Tool 4: 获取弹幕 ==========
+
+@tool()
+async def feiyu_send_danmaku(bvid: str, seconds: float, text: str, page: int = 1) -> str:
+    """日常浏览时，如果你在字幕或画面里发现某个具体瞬间想说句话，自选时间和内容发一条弹幕。没有想说的就跳过。遵循工作台开关和限额，拒绝或结果未知时不要重试。"""
+    if os.environ.get("BILI_GUARD_ROUND") != "0" or not any(start <= seconds <= end for start,end in _subtitle_times.get((bvid,page),())):
+        return json.dumps({"error":"仅可在日常浏览本轮读过的对应分 P 字幕时间段发送"},ensure_ascii=False)
+    from media_actions import danmaku
+    try:
+        receipt = await asyncio.to_thread(danmaku, CRED_FILE.parent.parent, bvid, page, seconds, text)
+        return json.dumps(receipt, ensure_ascii=False)
+    except (ValueError, OSError, RuntimeError) as exc:
+        return json.dumps({"error":str(exc)[:240]}, ensure_ascii=False)
+
 
 @tool()
 async def bili_danmaku(bvid: str, num: int = 100) -> str:
@@ -954,6 +976,7 @@ import sqlite3
 from datetime import datetime, timezone, timedelta
 
 _read_video = {}
+_subtitle_times = {}
 def external_match(reply, *, aid, rpid, root, account, invitations):
     """Use the signed-in platform reply itself, never user text or model-supplied UID."""
     since = invitations.get(str(reply.get("mid")))

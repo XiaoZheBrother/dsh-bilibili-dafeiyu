@@ -83,3 +83,7 @@ npm pack
 ```
 
 仓库根目录就是 DSH 插件包，工作台可直接从 `workbench/` 启动。[许可证](LICENSE) · [第三方来源](NOTICE.md) · [发行版本](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases)
+
+创作抽屉支持用本地成片和封面投稿。先在 DSH 数据目录的 `feiyu-runtime/media-venv` 建 Python 3.11 或更高版本的虚拟环境，在该环境安装 `bili-agent @ git+https://github.com/kukemc/bili-cli.git@39fecb3fdc67f17d545c669bcb088d4de048d956`。工作台复用鱼塘已绑定账号的登录。把成片和封面放到抽屉显示的素材目录，填写标题、简介和标签，预览后确认投稿，拿到 BV 号后可查看审核状态。遇到结果待核实，请先查看 B 站创作中心。
+
+在运行设置中可以开启自动弹幕，默认关闭。开启后由日常浏览轮自己选视频、分 P、秒数和内容。每日额度按北京时间计算，可设 1 至 3 条，同一账号在同一视频累计最多一条。结果未知的尝试也占额度，记录可在创作抽屉查看。

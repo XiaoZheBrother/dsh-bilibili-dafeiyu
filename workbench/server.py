@@ -10,10 +10,11 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from pond import Pond, PondError
+import media_actions as media
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_HOME = Path(os.environ.get('DSH_HOME', str(Path.home()/'.dsh')))
-STATIC = {'/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
+STATIC = {'/media.js': ('media.js','text/javascript; charset=utf-8'), '/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
           '/style.css': ('style.css','text/css; charset=utf-8'),
           '/settings.js': ('settings.js','text/javascript; charset=utf-8'),
           '/assets/moonlit-whale-v1.png': ('assets/moonlit-whale-v1.png','image/png'),
@@ -173,6 +174,12 @@ def handler_for(home,port,pond=None):
             if self.headers.get('Sec-Fetch-Site')=='cross-site':
                 return self.respond(403,b'{"error":"cross site denied"}')
             path=urlsplit(self.path).path
+            if path=='/api/media':
+                try:
+                    value=media.dashboard(home)
+                    return self.respond(200,json.dumps(value,ensure_ascii=False).encode())
+                except (OSError,ValueError,sqlite3.Error,KeyError):
+                    return self.respond(503,b'{"error":"Media workspace unavailable"}')
             if path=='/api/settings':
                 try:return self.respond(200,json.dumps(pond.settings(),ensure_ascii=False).encode())
                 except PondError as e:return self.respond(e.status,json.dumps({'error':str(e)},ensure_ascii=False).encode())
@@ -183,7 +190,7 @@ def handler_for(home,port,pond=None):
             self.respond(200,(HERE/'static'/filename).read_bytes(),content_type)
         def do_POST(self):
             path=self.path
-            if path not in ('/api/settings','/api/external-mentions','/api/comment-prefill','/api/login/start','/api/login/poll'):
+            if path not in ('/api/media/config','/api/media/preview','/api/media/submit','/api/media/status','/api/settings','/api/external-mentions','/api/comment-prefill','/api/login/start','/api/login/poll'):
                 return self.respond(405,b'{"error":"unsupported operation"}')
             if (self.headers.get('Host') not in (f'127.0.0.1:{port}',f'localhost:{port}')
                 or self.headers.get('Origin')!='http://'+self.headers.get('Host','')
@@ -200,7 +207,18 @@ def handler_for(home,port,pond=None):
                 self.body_consumed=True
                 try:body=json.loads(self.rfile.read(length))
                 except (ValueError,OSError):raise PondError(400,'请求不完整或格式错误')
-                if path=='/api/settings':result=pond.save(body)
+                if path.startswith('/api/media/'):
+                    if not isinstance(body,dict):raise PondError(400,'请求格式错误')
+                    try:
+                        if path.endswith('/config'):result=media.configure(home,body)
+                        elif path.endswith('/status'):
+                            bv=body.get('bvid','')
+                            if not isinstance(bv,str) or not media.BV.fullmatch(bv):raise PondError(400,'无效的 BV 号')
+                            result=media.cli(home,['upload','status',bv])
+                        else:result=media.submission(home,body,path.endswith('/submit'))
+                    except media.MediaError as exc:raise PondError(409,str(exc))
+                    except Exception:raise PondError(503,'操作未完成，请查看记录并核对创作中心')
+                elif path=='/api/settings':result=pond.save(body)
                 elif path=='/api/external-mentions':result=pond.save_mentions(body)
                 elif path=='/api/comment-prefill':result=pond.save_prefill(body)
                 else:
