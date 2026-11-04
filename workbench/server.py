@@ -48,6 +48,33 @@ def character_snapshot(home):
     except (sqlite3.Error,ValueError):result['warnings'].append('经历账本暂时不可读，旧手记仍保留。')
     return result
 
+def writing_creations(home):
+    """Project existing author drafts; never import checks, prompts or partner feedback."""
+    root=home/'feiyu-runtime/writing'
+    rows=[]
+    for pattern in ('drafts/*/original.json','drafts/*/revise-*.json',
+                    'experiments/*/script.json','experiments/*/revision-*.json','experiments/*/naming-script-*.json'):
+        for path in root.glob(pattern):
+            try:
+                if path.is_symlink() or not path.resolve().is_relative_to(root.resolve()) or path.stat().st_size>500000:continue
+                doc=json.loads(path.read_text(encoding='utf8'))
+                if not isinstance(doc,dict):continue
+                if 'author' not in doc and path.name.startswith('revise-'):
+                    origin=json.loads((path.parent/'original.json').read_text(encoding='utf8'))
+                    author=origin.get('author')
+                else:author=doc.get('author')
+                body=doc.get('text')
+                if not author or not isinstance(body,str) or not body.strip():continue
+                heading=re.search(r'《([^》\n]{1,100})》',body)
+                title=heading.group(1) if heading else body.strip().splitlines()[0].strip('*')[:60]
+                revision=path.name.startswith(('revise-','revision-'))
+                rows.append({'id':path.relative_to(root).as_posix(),'subject':path.parent.name,
+                             'at':datetime.fromtimestamp(path.stat().st_mtime,timezone.utc).isoformat(),
+                             'payload':{'title':title,'body':body,'state':'draft','author':author,
+                                        'label':'写作台 · 修订稿' if revision else '写作台 · 原稿'}})
+            except (ValueError,OSError,TypeError,AttributeError):continue
+    return rows
+
 def read_snapshot(home):
     warnings=[];artifacts=[];memories=[];publications=[];queue=[]
     database=home/'agent-growth/growth.sqlite3'
@@ -110,6 +137,7 @@ def read_snapshot(home):
                 publications.append({k:v.get(k) for k in ('bvid','title','description','created','length','play','comment')})
         except (OSError,ValueError):warnings.append('投稿快照暂时不可读。')
     character=character_snapshot(home)
+    character['creations']=sorted(character['creations']+writing_creations(home),key=lambda r:r['at'],reverse=True)[:100]
     return {'readOnly':True,'character':character,'capturedAt':datetime.now(timezone.utc).isoformat(),'warnings':list(dict.fromkeys(warnings+character['warnings'])),
             'artifacts':artifacts,'latest':latest,'memories':memories,'publications':publications,'catalogAt':catalog_at,
             'pending':sum(r['state'] in ('pending','running','saved') for r in queue),

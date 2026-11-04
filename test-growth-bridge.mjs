@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,mkdirSync,writeFileSync,copyFileSync} from 'node:fs'
+import {mkdtempSync,mkdirSync,readFileSync,writeFileSync,copyFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {DatabaseSync} from 'node:sqlite'
@@ -31,5 +31,12 @@ test('native growth queue integration: stable IDs and same observation reservati
  writeFileSync(join(home,'feiyu-runtime/config.json'),JSON.stringify({growthOwner:'runtime',profile:'web',accountUid:'42'}))
  bridge.adapter=async(name,args)=>name==='bili_user_videos'?{uid:42,total:1,videos:[{bvid:'BV1234567890',created:Math.floor(Date.now()/1000)-90000,title:'实际作品'}]}:name==='bili_video_info'?{bvid:args.bvid,stat:{view:10}}:{owner_mid:42,comments:[]}
  bridge.last=0;await bridge.tick();assert.equal(db.prepare("SELECT count(*) AS n FROM jobs WHERE kind='review'").get().n,2)
+ const catalog=join(home,'bili-duty/guard-catalog.json')
+ const earlier={ownerUid:42,at:new Date(Date.now()-1860000).toISOString(),complete:true,videos:[]}
+ writeFileSync(catalog,JSON.stringify(earlier))
+ bridge.last=0;await bridge.tick()
+ const fresh=JSON.parse(readFileSync(catalog,'utf8'))
+ assert.equal(fresh.ownerUid,42);assert.equal(fresh.videos[0].bvid,'BV1234567890')
+ assert.equal(db.prepare("SELECT count(*) AS n FROM jobs WHERE kind='review'").get().n,2)
  db.close();character.close()
 })
