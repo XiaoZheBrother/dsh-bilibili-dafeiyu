@@ -33,6 +33,27 @@ function experiencePresentation(x){
  }catch{}
  return {title,body};
 }
+function operationPresentation(record){
+ const {kind,state,started,finished}=record;
+ const titles={'growth-collection':'检查有没有新的成长素材','guard-scan-and-dispatch':'查看有没有待回复的评论','guard-manual-scan':'手动查看待回复评论','dispatch:manual':'手动启动值班','dispatch:window:noon':'午间值班'};
+ const title=titles[kind]||(kind.startsWith('dispatch:')?'自动启动值班':'后台任务');
+ const badge=({done:'已结束',running:'进行中',failed:'失败',uncertain:'结果待核实',skipped:'未启动'})[state]||'状态待核实';
+ let result;
+ try{result=JSON.parse(record.result)}catch{}
+ let body;
+ if(state==='running')body='这次任务还在进行中。';
+ else if(state==='uncertain')body='任务中断，最后一步的结果尚未确认。';
+ else if(state==='failed')body=result?.error||'任务失败，记录中没有具体原因。';
+ else if(state==='skipped')body=result?.busy?'当时已有其他任务在运行。':result?.error||'本轮没有启动值班。';
+ else if(state!=='done')body='这条记录的状态有待核实。';
+ else if(result?.error)body='本次检查遇到问题：'+result.error;
+ else if(typeof result?.queued==='number')body='本次加入待回复队列的评论有 '+result.queued+' 条。';
+ else if(result?.started===true)body='本轮值班已启动。';
+ else if(kind==='growth-collection')body='到了采集时间才会整理近期经历。这次检查已结束，记录里没有写是否新增了素材。';
+ else if(kind.startsWith('guard-'))body='这轮评论检查已结束，记录里没有写发现或回复了几条。';
+ else body='任务已结束，记录里没有更多结果。';
+ return {title,badge,body,started,finished};
+}
 function render(){if(!data)return;
  const search=$('#search').value.trim().toLocaleLowerCase();const match=x=>!search||JSON.stringify(x).toLocaleLowerCase().includes(search);
  $('#section-kicker').textContent=tabs[tab][0];$('#section-title').textContent=tabs[tab][1];
@@ -45,7 +66,10 @@ function render(){if(!data)return;
  if(tab==='publications')list=data.publications.filter(match).map((x,i)=>{const c=card({title:x.title,body:x.description,badge:'已经发布',index:i,meta:`${date(x.created)} · ${x.length||'时长未知'}`,onOpen:()=>openDetail({title:x.title,body:x.description},'作品简介')});const counts=el('p','',`播放 ${x.play??'未知'} · 评论 ${x.comment??'未知'} · 快照 ${date(data.catalogAt)}`);c.append(counts);const a=el('a','text-button','在 B站打开 ↗');a.href='https://www.bilibili.com/video/'+x.bvid+'/';a.target='_blank';a.rel='noopener noreferrer';c.append(a);return c});
  if(tab==='experiences')list=(data.character?.experiences||[]).filter(match).map((x,i)=>card({...experiencePresentation(x),badge:({'receipt':'发送回执 ≠ 公开可见','model-authored':'观点或自述，非独立核验','partial':'部分资料，非完整观看'})[x.coverage]||'原始记录',index:i,meta:x.occurred?(/^\d{4}-\d{2}-\d{2}$/.test(x.occurred)?'记录日 '+x.occurred:date(x.occurred)):'采集于 '+date(x.captured),onOpen:()=>openDetail({title:x.source,body:x.body+'\n\n来源 ID：'+x.id+'\n哈希：'+x.hash,at:x.captured,truncated:x.truncated},'经历凭据')}));
  if(['relationships','creations'].includes(tab))list=(data.character?.[tab]||[]).filter(match).map((x,i)=>card({title:x.payload.title||x.subject,body:x.payload.body||x.payload.observation,badge:tab==='creations'?({hold:'先不发',draft:'草稿',ready:'待发布确认'})[x.payload.state]||'原稿':'她的观察，不给人贴标签',index:i,meta:date(x.at),onOpen:()=>openDetail({title:x.payload.title||x.subject,body:JSON.stringify(x.payload,null,2)+'\n\n版本：'+x.id,at:x.at},'保留原想法与历史版本')}));
- if(tab==='operations')list=(data.character?.operations||[]).filter(match).map((x,i)=>card({title:x.kind,body:x.result||(x.state==='uncertain'?'上次运行中断，需要核实；没有自动重放。':'仍在运行；未知结果不会自动重放'),badge:({uncertain:'结果未确认',running:'运行中',done:'已完成',failed:'失败',skipped:'未启动'})[x.state]||x.state,index:i,meta:date(x.started),onOpen:()=>openDetail({title:x.kind,body:JSON.stringify(x,null,2)},'调度记录')}));
+ if(tab==='operations')list=(data.character?.operations||[]).map(operationPresentation).filter(match).map((entry,index)=>card({
+  ...entry,index,meta:date(entry.started),action:'查看记录 ↗',
+  onOpen:()=>openDetail({title:entry.title,body:[entry.badge,entry.body,'开始时间 '+date(entry.started),entry.finished&&'结束时间 '+date(entry.finished)].filter(Boolean).join('\n')},'运行足迹')
+ }));
  if(!list.length)cards.append(el('div','empty',search?'没有找到这段记录，换个词试试。':'这里还没有记录。等她慢慢留下新的经历。'));else cards.append(...list);
  $('#surprise').textContent=data.latest?.exploration?.surprise||'还没有探索手记。这里会展示她自己记录的意外发现。';
  const share=data.latest?.exploration?.share;$('#share').textContent=share?`${share.decision==='hold'?'先不做视频':'有一份素材，想讨论看看'}。${share.reason}`:'没有新的分享判断。';
