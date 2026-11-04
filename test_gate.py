@@ -1,0 +1,30 @@
+import ast,sqlite3,tempfile,unittest
+from pathlib import Path
+from datetime import datetime,timezone,timedelta
+
+source=Path(__file__).parent/'vendor/bilibili-mcp/mcp_server.py'
+tree=ast.parse(source.read_text(encoding='utf-8'))
+scope={'sqlite3':sqlite3,'datetime':datetime,'timezone':timezone,'timedelta':timedelta}
+exec(compile(ast.Module(body=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in ('feiyu_reserve','feiyu_receipt')],type_ignores=[]),str(source),'exec'),scope)
+
+class GateTests(unittest.TestCase):
+ def setUp(self):
+  self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup);self.db=Path(self.tmp.name)/'send.sqlite3';self.policy={'enabled':True,'accountUid':'42','accountName':'测试鱼'};self.now=datetime(2026,11,4,tzinfo=timezone.utc)
+ def reserve(self,bv='BV1234567890',rpid=0,owner='17',account='42',policy=None,now=None):return scope['feiyu_reserve'](self.db,policy or self.policy,bv,rpid,owner,account,'普通评论',now or self.now)
+ def test_account_binding_required_and_preserved(self):
+  for policy,account in [({'enabled':True},'42'),(self.policy,'43')]:
+   with self.assertRaises(ValueError):self.reserve(policy=policy,account=account)
+  self.reserve()
+ def test_uncertain_reservation_never_replays(self):
+  self.reserve()
+  with self.assertRaises(ValueError):self.reserve(now=self.now+timedelta(days=1))
+ def test_twenty_attempt_cap_and_spacing(self):
+  self.reserve()
+  with self.assertRaises(ValueError):self.reserve(bv='BV1234567891',now=self.now+timedelta(seconds=299))
+  for i in range(1,20):self.reserve(bv=f'BV{i:010d}',now=self.now+timedelta(seconds=i*300))
+  with self.assertRaises(ValueError):self.reserve(bv='BV9999999999',now=self.now+timedelta(seconds=6000))
+ def test_only_own_video_replies(self):
+  with self.assertRaises(ValueError):self.reserve(rpid=123,owner='17')
+  self.reserve(rpid=123,owner='42')
+
+if __name__=='__main__':unittest.main()

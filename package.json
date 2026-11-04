@@ -1,0 +1,96 @@
+{
+  "name": "dsh-feiyu-runtime",
+  "version": "0.2.0",
+  "description": "大肥鱼成长运行插件：真实经历、持续好奇、关系记忆与自己的创作",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "bilibili",
+    "bili",
+    "radar",
+    "daily-digest"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "runtime.js",
+  "exports": {
+    ".": "./runtime.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "owner.mjs",
+    "client.js",
+    "cordis.patch.yml",
+    "prompts",
+    "assets",
+    "LICENSE",
+    "NOTICE.md",
+    "MIGRATION.md",
+    "runtime.js",
+    "character-cli.mjs",
+    "workbench",
+    "bin",
+    "README.md",
+    "lib/*.mjs",
+    "lib/*.py",
+    "vendor/bilibili-mcp/*.py",
+    "vendor/bilibili-mcp/*.md",
+    "vendor/bilibili-mcp/*.txt",
+    "vendor/bilibili-mcp/LICENSE"
+  ],
+  "engines": {
+    "dsh": ">=0.1.7-rc.1",
+    "node": ">=22.19.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*",
+    "@deepseek-ai/schemastery": "*"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node --test test-owner.mjs test-character.mjs test-growth-bridge.mjs",
+    "check:upstream": "node --import ./tools/register.mjs selfcheck.mjs && node tools/_check-1016.mjs && node tools/test-migrate.mjs && node tools/test-comment-cap.mjs && node tools/test-reuse-routes.mjs && node tools/test-host-default-model.mjs && node tools/test-guard.mjs && node tools/test-guard-watermark.mjs && node tools/test-duty-workspace.mjs && node tools/test-history.mjs && node tools/test-pond-page.mjs && node tools/test-circle-config.mjs && node tools/test-intent-lines.mjs && node tools/test-likes.mjs && python tools/test-circle.py"
+  },
+  "author": {
+    "name": "XiaoZheBrother",
+    "url": "https://github.com/XiaoZheBrother"
+  },
+  "private": true,
+  "contributors": [
+    {
+      "name": "YOYOLnFu",
+      "url": "https://space.bilibili.com/14430149"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu.git"
+  },
+  "homepage": "https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu"
+}
