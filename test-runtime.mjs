@@ -20,7 +20,7 @@ try {
  const identity=routes.find(r=>r.path==='/api/feiyu-runtime/identity')
  let output
  identity.handler({}, {writeHead(){},end:body=>{output=JSON.parse(body)}})
- assert.equal(output.runtime,'dsh-feiyu-runtime')
+ assert.equal(output.runtime,'dsh-bilibili-dafeiyu')
  for(const close of cleanup.reverse())await close()
  // Disposing a plugin is insufficient to stop legacy in-flight work.
  await assert.rejects(apply(ctx,{}),{code:'EADDRINUSE'})

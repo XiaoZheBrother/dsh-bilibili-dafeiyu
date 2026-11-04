@@ -34,7 +34,7 @@
  * ============================================================================
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-feiyu-runtime',
+  id: 'dsh-bilibili-dafeiyu',
   factory: (require) => {
     const React = require('react')
     const h = React.createElement

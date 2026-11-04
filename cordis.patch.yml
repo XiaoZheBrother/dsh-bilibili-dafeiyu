@@ -1,5 +1,5 @@
 - insert:
     - id: bili-pond
-      name: dsh-feiyu-runtime
+      name: dsh-bilibili-dafeiyu
       config:
         enabled: true

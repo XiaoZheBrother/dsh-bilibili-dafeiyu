@@ -15,7 +15,7 @@ def invoke(request):
         profile=os.environ.get('DSH_PROFILE') or 'web'
         if not home or not Path(home).is_absolute() or not re.fullmatch(r'[A-Za-z0-9_-]+',profile):
             raise RuntimeError('Explicit DSH home/profile required')
-        cli=str(Path(home)/'profiles'/profile/'node_modules/dsh-feiyu-runtime/character-cli.mjs')
+        cli=str(Path(home)/'profiles'/profile/'node_modules/dsh-bilibili-dafeiyu/character-cli.mjs')
         node=shutil.which('node')
         if not Path(cli).is_file() or not node:raise RuntimeError('Read-only character bridge unavailable')
     raw=json.dumps(request,ensure_ascii=False)

@@ -12,10 +12,10 @@
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
-$archive = Join-Path $env:TEMP 'dsh-feiyu-runtime-0.2.1.tgz'
-curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.1/dsh-feiyu-runtime-0.2.1.tgz' -o $archive
+$archive = Join-Path $env:TEMP 'dsh-bilibili-dafeiyu-0.2.2.tgz'
+curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.2/dsh-bilibili-dafeiyu-0.2.2.tgz' -o $archive
 dsh plugin --profile web add "$archive"
-$plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-feiyu-runtime'
+$plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-bilibili-dafeiyu'
 ```
 
 首次安装时，把下方示例中的 UID 和昵称替换为你自己的 B 站专用账号。初始化默认关闭自动评论与成长采集。运行 `doctor` 检查配置后，启动 DSH。
@@ -30,7 +30,7 @@ dsh web --port 3086 --no-open
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
-$plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-feiyu-runtime'
+$plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-bilibili-dafeiyu'
 python "$plugin/workbench/server.py" --home "$env:DSH_HOME" --port 3087
 ```
 

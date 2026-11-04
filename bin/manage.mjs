@@ -31,7 +31,7 @@ if(command==='resolve') {
  const profile=config.profile||'web';if(!/^[\w-]+$/.test(profile))throw Error('Invalid profile')
  const p=join(home,'profiles',profile,'package.json'),manifest=existsSync(p)?JSON.parse(readFileSync(p,'utf8')):{}
  const bundles=manifest.dsh?.profile?.bundles||[]
- const checks={node:Number(process.versions.node.split('.')[0])>=22,accountBound:/^\d+$/.test(String(policy.accountUid||'')),singleBundle:bundles.filter(x=>['dsh-bili-pond','dsh-feiyu-runtime'].includes(x)).length===1&&bundles.includes('dsh-feiyu-runtime'),growthInstalled:existsSync(join(home,'profiles',profile,'node_modules/dsh-agent-growth/core.js')),credentialsPresent:existsSync(join(duty,'bili_credential.json')),ledgerPresent:existsSync(join(dir,'character.sqlite3'))}
+ const checks={node:Number(process.versions.node.split('.')[0])>=22,accountBound:/^\d+$/.test(String(policy.accountUid||'')),singleBundle:bundles.filter(x=>['dsh-bili-pond','dsh-feiyu-runtime','dsh-bilibili-dafeiyu'].includes(x)).length===1&&bundles.includes('dsh-bilibili-dafeiyu'),growthInstalled:existsSync(join(home,'profiles',profile,'node_modules/dsh-agent-growth/core.js')),credentialsPresent:existsSync(join(duty,'bili_credential.json')),ledgerPresent:existsSync(join(dir,'character.sqlite3'))}
  console.log(JSON.stringify({checks,growthOwner:config.growthOwner||'off',notes:['Credential presence is not a login test','Stop legacy collector before growthOwner=runtime','Do not hot reload; stop entire DSH process tree before upgrades']},null,2))
  if(!checks.node||!checks.accountBound||!checks.singleBundle)process.exitCode=1
 }

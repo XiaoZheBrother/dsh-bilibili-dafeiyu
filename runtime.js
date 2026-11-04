@@ -14,7 +14,7 @@ export async function apply(ctx,config) {
       kind:'exact',path:'/api/feiyu-runtime/identity',
       handler:(_req,res)=>{
         res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'})
-        res.end(JSON.stringify({ok:true,runtime:'dsh-feiyu-runtime',version:'0.2.1',features:['experience-ledger','curiosity','relationships','creation-versions','unified-scheduler','growth-bridge'],upstream:'dsh-bili-pond@1.3.14',ownerPort:3091,pid:process.pid}))
+        res.end(JSON.stringify({ok:true,runtime:'dsh-bilibili-dafeiyu',version:'0.2.2',features:['experience-ledger','curiosity','relationships','creation-versions','unified-scheduler','growth-bridge'],upstream:'dsh-bili-pond@1.3.14',ownerPort:3091,pid:process.pid}))
       },
     }),'feiyu-runtime: identity')
 }
