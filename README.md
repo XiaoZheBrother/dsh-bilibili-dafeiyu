@@ -6,9 +6,9 @@
 
 ## 从 GitHub 安装
 
-本版面向 **DeepSeek Harness 0.2.1-rc.5、Node.js 22.19+ 和 Python 3.10+**，已在 Windows 的 `web` profile 验证。仓库名是 `dsh-bilibili-dafeiyu`，DSH 安装后的包名沿用 `dsh-feiyu-runtime`，方便已有实例继续读取原来的数据。
+本版面向 **DeepSeek Harness 0.2.1-rc.5、Node.js 22.19+ 和 Python 3.10+**，已在 Windows 的 `web` profile 验证。
 
-先关闭正在使用同一数据目录的 DSH 实例。已有鱼塘用户请先备份数据并停用旧 bundle 和采集任务，保留已有的账号、记忆和发送账本。以下 PowerShell 命令适用于新实例。
+在 PowerShell 中为工作台指定一个独立的数据目录，然后下载安装包。
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
@@ -18,7 +18,7 @@ dsh plugin --profile web add "$archive"
 $plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-feiyu-runtime'
 ```
 
-首次安装时，把下方示例中的 UID 和昵称替换为你自己的 B 站专用账号。初始化默认关闭自动评论与成长采集。已有配置的用户直接执行 `doctor`。
+首次安装时，把下方示例中的 UID 和昵称替换为你自己的 B 站专用账号。初始化默认关闭自动评论与成长采集。运行 `doctor` 检查配置后，启动 DSH。
 
 ```powershell
 node "$plugin/bin/manage.mjs" init "$env:DSH_HOME" 123456 '我的角色'
@@ -34,7 +34,7 @@ $plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-feiyu-runtime'
 python "$plugin/workbench/server.py" --home "$env:DSH_HOME" --port 3087
 ```
 
-要让角色自己执行学习和复盘，在同一个 `web` profile 安装并配置 [dsh-agent-growth v0.2.0](https://github.com/XiaoZheBrother/dsh-agent-growth/releases/tag/v0.2.0)。成长插件使用宿主模型。数据目录设为 `DSH_HOME/agent-growth`，时区用 `Asia/Shanghai`，每日预算设为 5，`autoRun` 开启，`memoryReview` 关闭以沿用本插件的记忆整理排班。然后在 `DSH_HOME/feiyu-runtime/config.json` 将 `growthOwner` 设为 `runtime`，`memoryName` 填写自己的 Soul 角色名，重启 DSH。
+要让角色自己执行学习和复盘，在同一个 `web` profile 安装并配置 [dsh-agent-growth v0.2.0](https://github.com/XiaoZheBrother/dsh-agent-growth/releases/tag/v0.2.0)。成长插件使用宿主模型。数据目录设为 `DSH_HOME/agent-growth`，时区用 `Asia/Shanghai`，每日预算设为 5，`autoRun` 开启，`memoryReview` 关闭，由工作台安排记忆整理。然后在 `DSH_HOME/feiyu-runtime/config.json` 将 `growthOwner` 设为 `runtime`，`memoryName` 填写自己的 Soul 角色名，重启 DSH。
 
 ## 工作台实拍
 
@@ -56,15 +56,15 @@ python "$plugin/workbench/server.py" --home "$env:DSH_HOME" --port 3087
 
 sources 必须是召回返回的经历 ID；readReceipts 填对应 readReceipt。服务核对已返回的摘录与哈希，不能证明模型理解了全文。decision 的 subject 固定为 exploration，pause 会暂停新探索入队，continue 恢复；search/inspect 同样受只读来源和两次观察预算限制。旧版本永不覆盖。
 
-工作台展示真实经历、认识的朋友、创作抽屉、运行足迹，以及原有兴趣、学习、作品、记忆和设置。真实记录与模型自述分开，字幕不等于完整观看，发送回执不等于公开可见。
+工作台展示真实经历、认识的朋友、创作抽屉、运行足迹，以及角色的兴趣、学习记录、作品、记忆和设置。真实记录与模型自述分开，字幕不等于完整观看，发送回执不等于公开可见。
 
 ## 数据与恢复
 
-新库：`DSH_HOME/feiyu-runtime/character.sqlite3`。原 `bili-duty`、`agent-growth`、`soul-md` 保留；旧经历只读导入，新增记忆使用新文件，不覆盖旧记忆。SQLite 状态不要在运行时直接复制，备份应使用 SQLite backup 或停机复制。
+角色记录保存在 `DSH_HOME/feiyu-runtime/character.sqlite3`。备份整个工作台时，先停止使用该目录的服务，再复制整个 `DSH_HOME` 目录。单独在线备份数据库时，使用 SQLite 的备份功能。
 
 浏览、守护扫描与采集通过同一调度器串行进入。主会话手动操作也经过派发互斥。模型学习队列由成长插件自己的事务租约保护，与平台执行职责分开。进程重启会把未完成运行标为 uncertain，不自动重放；发送账本的 reserved 继续阻止重发。
 
-本地已授权的普通评论仍受每目标一次、每天最多20次发送尝试、至少300秒间隔、账号绑定约束。失败也消耗尝试，不绕过去重。新增发布、私信、安装插件不在自动执行范围。
+本地已授权的普通评论受每目标一次、每天最多20次发送尝试、至少300秒间隔、账号绑定约束。失败也消耗尝试，不绕过去重。
 
 目前只有 B站适配器。`lib/platform.mjs` 明确限定成长采集的只读能力，其他平台需要实现对应适配器，不能直接暴露通用执行器。工作台视觉以大肥鱼为默认示例，可替换 static 资源；人格和账号配置不随包携带。
 
@@ -76,4 +76,4 @@ cd dsh-bilibili-dafeiyu
 npm pack
 ```
 
-仓库根目录就是 DSH 插件包，工作台可直接从 `workbench/` 启动。B 站登录、字幕和兼容协议复用了 MIT 授权的上游实现。[许可证](LICENSE) · [第三方来源](NOTICE.md) · [发行版本](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases)
+仓库根目录就是 DSH 插件包，工作台可直接从 `workbench/` 启动。[许可证](LICENSE) · [第三方来源](NOTICE.md) · [发行版本](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases)
