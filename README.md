@@ -12,8 +12,8 @@
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
-$archive = Join-Path $env:TEMP 'dsh-feiyu-runtime-0.2.0.tgz'
-curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.0/dsh-feiyu-runtime-0.2.0.tgz' -o $archive
+$archive = Join-Path $env:TEMP 'dsh-feiyu-runtime-0.2.1.tgz'
+curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.1/dsh-feiyu-runtime-0.2.1.tgz' -o $archive
 dsh plugin --profile web add "$archive"
 $plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-feiyu-runtime'
 ```
