@@ -66,7 +66,11 @@ def tool():
         if _ALLOWED and fn.__name__ not in _ALLOWED:
             return fn
         from character_bridge import observe
-        return mcp.tool()(observe(fn))
+        wrapped = observe(fn)
+        if fn.__name__ == "bili_reply" and os.environ.get("BILI_GUARD_LOG"):
+            from comment_prefill import reviewable
+            wrapped = reviewable(wrapped, Path(__file__).resolve().parent)
+        return mcp.tool()(wrapped)
     return deco
 
 

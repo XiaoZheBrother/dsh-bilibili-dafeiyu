@@ -7,6 +7,10 @@ import secrets
 import threading
 import time
 import urllib.request
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+import comment_prefill
 
 BOOLS = 'autoRun peakValleyOnly autoComment circleMode replyToComments guardOn guardOwnAll guardEmoji preferSubtitle transcribe'.split()
 NUMBERS = {'autoRunsPerDay': (0,24), 'autoGapMinutes': (15,240), 'perRoundMax': (0,20),
@@ -48,6 +52,32 @@ class Pond:
     @staticmethod
     def revision(config):return hashlib.sha256(json.dumps(config,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
+    def prefill(self):
+        try:
+            data = comment_prefill.load(self.home / 'bili-duty')
+        except (ValueError, OSError) as exc:
+            raise PondError(503, '评论预填充配置不可读') from exc
+        return dict(data, revision=self.revision(data))
+
+    def save_prefill(self, body):
+        if not isinstance(body, dict) or set(body) != {'revision','enabled','prefix'}:
+            raise PondError(400,'预填充设置格式不正确')
+        with self.lock:
+            if self.prefill()['revision'] != body['revision']:
+                raise PondError(409,'设置已变化，请重新读取')
+            try:
+                data = comment_prefill.validated({k:body[k] for k in ('enabled','prefix')})
+            except ValueError as exc:
+                raise PondError(400,str(exc)) from exc
+            path = self.home / 'bili-duty' / comment_prefill.FILENAME
+            tmp = path.with_suffix('.'+secrets.token_hex(8)+'.tmp')
+            try:
+                tmp.write_text(json.dumps(data, ensure_ascii=False),encoding='utf8')
+                os.replace(tmp,path)
+            finally:
+                tmp.unlink(missing_ok=True)
+            return self.prefill()
+
     def external_mentions(self):
         path=self.home/'bili-duty/external-mentions.json'
         try:
@@ -86,7 +116,7 @@ class Pond:
                 policies[filename]={k:source[k] for k in fields if k in source}
             except (OSError,ValueError,TypeError):policies[filename]=None
         mentions=self.external_mentions()
-        return {'externalMentions':{'uids':list(mentions),'revision':self.revision(mentions)},'config':cfg,'revision':self.revision(cfg),'csrf':self.token,'policies':policies,
+        return {'commentPrefill':self.prefill(),'externalMentions':{'uids':list(mentions),'revision':self.revision(mentions)},'config':cfg,'revision':self.revision(cfg),'csrf':self.token,'policies':policies,
                 'status':{k:raw.get(k) for k in ('loggedIn','venvReady','running','finalizing','roundsToday','pickedToday','asrUsedToday','lastRunAt','version')},
                 'notSynced':[k for k in raw.get('notSynced',[]) if k in FIELDS]}
 

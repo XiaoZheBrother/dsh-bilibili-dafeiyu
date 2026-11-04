@@ -155,7 +155,7 @@ def handler_for(home,port,pond=None):
             self.respond(200,(HERE/'static'/filename).read_bytes(),content_type)
         def do_POST(self):
             path=self.path
-            if path not in ('/api/settings','/api/external-mentions','/api/login/start','/api/login/poll'):
+            if path not in ('/api/settings','/api/external-mentions','/api/comment-prefill','/api/login/start','/api/login/poll'):
                 return self.respond(405,b'{"error":"unsupported operation"}')
             if (self.headers.get('Host') not in (f'127.0.0.1:{port}',f'localhost:{port}')
                 or self.headers.get('Origin')!='http://'+self.headers.get('Host','')
@@ -174,6 +174,7 @@ def handler_for(home,port,pond=None):
                 except (ValueError,OSError):raise PondError(400,'请求不完整或格式错误')
                 if path=='/api/settings':result=pond.save(body)
                 elif path=='/api/external-mentions':result=pond.save_mentions(body)
+                elif path=='/api/comment-prefill':result=pond.save_prefill(body)
                 else:
                     if body!={}:raise PondError(400,'登录请求不接受额外参数')
                     result=pond.start_login() if path.endswith('/start') else pond.poll_login()

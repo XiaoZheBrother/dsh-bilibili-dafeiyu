@@ -12,11 +12,13 @@
  ['dutyProvider','模型线路 ID（留空跟随宿主）','text'],['dutyModel','模型名称（留空跟随默认）','text'],['preferSubtitle','字幕优先','bool'],['subtitleProbeMax','每轮最多查几条字幕','number',1,10],['transcribe','允许本地转写','bool'],['transcribePerDay','每日最多转写次数','number',0,50],['asrModel','本地转写模型','text']]]
  ];
  const fields=groups.flatMap(g=>g[1]),labels=Object.fromEntries(fields.map(f=>[f[0],f[1]]));
+ let prefillDirty=false;
  let current=null,dirty=false,loading=false,pending=null,uncertain=false;
  function setBusy(value){loading=value;q('#settings-form').querySelectorAll('fieldset,button').forEach(e=>e.disabled=value);q('#settings-reload').disabled=value;q('#login-start').disabled=value;}
  const message=t=>q('#settings-message').textContent=t;
  async function request(path,body){const options={cache:'no-store'};if(body!==undefined){options.method='POST';options.headers={'Content-Type':'application/json','X-Studio-CSRF':current?.csrf||''};options.body=JSON.stringify(body)}const r=await fetch(path,options);const result=await r.json();if(!r.ok)throw new Error(result.error||'服务暂不可用');return result}
  function draw(){
+  if(!prefillDirty){q('#prefill-enabled').checked=current.commentPrefill.enabled;q('#prefill-text').value=current.commentPrefill.prefix;}
   q('#mentions-uids').value=current.externalMentions.uids.join('\n');
   const form=q('#settings-form');form.replaceChildren();
   for(const [title,rows] of groups){const group=make('fieldset'),legend=make('legend',title);group.append(legend);for(const [key,label,type,min,max] of rows){if(!(key in current.config))continue;const row=make('label'),caption=make('span',label),input=make(type==='text'?'textarea':'input');input.name=key;if(type==='bool'){input.type='checkbox';input.checked=current.config[key]===true;row.className='check-row'}else{if(type==='number'){input.type='number';input.min=min;input.max=max;input.step=1;input.required=true}else{input.rows=2;input.maxLength=key==='keywords'?2000:key==='guardWhitelist'||key==='guardTone'?1000:key==='dutyModel'?200:key==='dutyProvider'?120:100}input.value=key==='keywords'?(current.config[key]||[]).join('\n'):(current.config[key]??'')}row.append(caption,input);group.append(row)}form.append(group)}
@@ -24,9 +26,18 @@
   const s=current.status;q('#account-status').textContent=`${s.loggedIn?'已保存登录凭据（不等于已在线验证有效）':'尚未保存登录凭据'} · ${s.running?'正在浏览':s.finalizing?'正在收尾':'当前没有浏览轮运行'} · 今日浏览 ${s.pickedToday??'未知'} 个视频`;
   const p=current.policies['feiyu-policy.json'],t=current.policies['share-target.json'];q('#policy-status').textContent=`${p?`现有发送总闸：${p.enabled?'开启':'关闭'}，每天最多 ${p.dailyAttempts} 次发送尝试，间隔至少 ${p.minimumIntervalSeconds} 秒。`:'本地发送总闸信息读取失败，请先检查原服务。'} ${t?`选择性分享对象：${t.name}（UID ${t.uid}）。分享对象与值班章程绑定，本页仅展示。`:''} 点赞、收藏、私信保持现有配置，本页不修改。`;
  }
- async function load(){if(loading)return;if(dirty&&!window.confirm('重新读取会丢弃未保存的修改，继续吗？'))return;setBusy(true);message('正在读取现有鱼塘设置…');try{current=await request('/api/settings');dirty=false;uncertain=false;draw();message(current.notSynced.length?'已读取。部分原鱼塘配置未同步到 DSH，请在原工作台检查。':'已读取当前生效设置。')}catch(e){message(e.message)}finally{setBusy(false)}}
+ async function load(){if(loading)return;if((dirty||prefillDirty)&&!window.confirm('重新读取会丢弃未保存的修改，继续吗？'))return;setBusy(true);message('正在读取现有鱼塘设置…');try{current=await request('/api/settings');dirty=false;prefillDirty=false;uncertain=false;draw();message(current.notSynced.length?'已读取。部分原鱼塘配置未同步到 DSH，请在原工作台检查。':'已读取当前生效设置。')}catch(e){message(e.message)}finally{setBusy(false)}}
  q('#settings-nav').onclick=()=>{q('main>.workspace').hidden=true;q('#settings-page').hidden=false;document.querySelectorAll('.nav').forEach(n=>{n.classList.toggle('active',n===q('#settings-nav'));n.removeAttribute('aria-current')});q('#settings-nav').setAttribute('aria-current','page');if(!current)load()};
  document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{q('main>.workspace').hidden=false;q('#settings-page').hidden=true;q('#settings-nav').classList.remove('active');q('#settings-nav').removeAttribute('aria-current')}));
+ q('#prefill-form').addEventListener('input',()=>{prefillDirty=true});
+ q('#prefill-form').onsubmit=async e=>{
+  e.preventDefault();if(!current||loading)return;
+  const form=e.currentTarget,fieldset=form.querySelector('fieldset');fieldset.disabled=true;
+  try{
+   current.commentPrefill=await request('/api/comment-prefill',{revision:current.commentPrefill.revision,enabled:q('#prefill-enabled').checked,prefix:q('#prefill-text').value});
+   prefillDirty=false;message(current.commentPrefill.enabled?'评论预填充已开启，下次定稿使用新设置。':'评论预填充已关闭，前缀已保留。');
+  }catch(error){message(error.message)}finally{fieldset.disabled=false}
+ };
  q('#mentions-form').onsubmit=async e=>{
   e.preventDefault();if(!current||loading)return;
   const button=q('#mentions-save');button.disabled=true;
@@ -43,5 +54,5 @@
  q('#login-start').onclick=async()=>{if(loading||!current)return;setBusy(true);message('正在向原鱼塘申请二维码…');try{const r=await request('/api/login/start',{});q('#login-poll').disabled=false;q('#login-qr').src=r.qr;q('#login-message').textContent='二维码约三分钟有效；确认后点击检查状态。';q('#login-dialog').showModal();message('请完成扫码。')}catch(e){message(e.message)}finally{setBusy(false)}};
  q('#login-poll').onclick=async()=>{if(loading)return;let complete=false;setBusy(true);q('#login-poll').disabled=true;try{const r=await request('/api/login/poll',{});q('#login-message').textContent=({ok:'登录成功，凭据已由原鱼塘保存。',expired:'二维码已过期，请关闭后重新获取。',scanned:'已扫码，请在手机确认。',unknown:'暂未确认，请稍后检查。'})[r.state]||'等待扫码或手机确认。';if(r.state==='ok'){complete=true;q('#login-poll').disabled=true;message('登录成功。可重新读取设置查看状态。')}}catch(e){q('#login-message').textContent=e.message}finally{setBusy(false);q('#login-poll').disabled=complete}};
  q('#login-close').onclick=()=>q('#login-dialog').close();
- window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+ window.addEventListener('beforeunload',e=>{if(dirty||prefillDirty){e.preventDefault();e.returnValue=''}});
 })();
