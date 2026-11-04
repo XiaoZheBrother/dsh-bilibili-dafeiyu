@@ -1,7 +1,9 @@
 const $=s=>document.querySelector(s);
 const names={explore:'探索手记',learn:'学习笔记',review:'作品复盘',memory:'记忆整理'};
 const tabs={interests:['HER CURIOSITIES','最近惦记的事'],artifacts:['LITTLE EXPERIENCES','经历慢慢变成故事'],publications:['HER CREATIONS','留在世界里的作品'],memories:['THE MEMORY BOX','那些没有忘掉的小事']};
-Object.assign(tabs,{experiences:['REAL EXPERIENCES','每段经历，都有来处'],relationships:['FAMILIAR FACES','慢慢认识的朋友'],creations:['HER OWN WORDS','想分享，也可以先不发'],operations:['RUNTIME TRAIL','做过什么，哪里停下了']});
+let interactionType='all';
+const interactionLabels={all:'全部',comment:'评论',reply:'回复',danmaku:'弹幕'};
+Object.assign(tabs,{interactions:['INTERACTIONS','她在 B 站说过的话'],experiences:['REAL EXPERIENCES','每段经历，都有来处'],relationships:['FAMILIAR FACES','慢慢认识的朋友'],creations:['HER OWN WORDS','想分享，也可以先不发'],operations:['RUNTIME TRAIL','做过什么，哪里停下了']});
 let data=null,tab='interests',busy=false;
 function el(tag,cls,text){const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=String(text);return n}
 function date(value){if(!value)return '时间未记录';const d=new Date(typeof value==='number'?value*1000:value);return Number.isNaN(d.valueOf())?'时间未记录':d.toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})}
@@ -61,6 +63,30 @@ function render(){if(!data)return;
  const interests=data.latest?.exploration?.interests||[];
  const stats=$('#stats');stats.replaceChildren();for(const [name,n] of [['兴趣',interests.length],['手记',data.artifacts.length],['作品',data.publications.length],['记忆',data.memories.length]]){const pill=el('span','stat',name);pill.append(el('strong','',n));stats.append(pill)}
  const cards=$('#cards');cards.replaceChildren();let list=[];
+ const filters=$('#interaction-types');
+ filters.hidden=tab!=='interactions';
+ if(tab==='interactions'){
+   const entries=data.interactions?.items||[];
+   filters.replaceChildren();
+   for(const [key,label] of Object.entries(interactionLabels)){
+     const count=entries.filter(x=>key==='all'||x.kind===key).length;
+     const button=el('button','stat',label+' '+count);
+     button.setAttribute('aria-pressed',String(interactionType===key));
+     button.onclick=()=>{interactionType=key;render();filters.querySelector('[aria-pressed="true"]').focus()};
+     filters.append(button);
+   }
+   list=entries.filter(x=>(interactionType==='all'||x.kind===interactionType)&&match(x)).map(x=>{
+     const c=el('article','card interaction-card');
+     const timing=x.kind==='danmaku'?' · P'+x.page+' · '+Math.floor(x.seconds/60)+':'+String(Math.floor(x.seconds%60)).padStart(2,'0'):'';
+     const when=x.at.length===10?x.at:date(x.at);
+     c.append(el('span','badge',interactionLabels[x.kind]),el('p','interaction-text',x.text));
+     const a=el('a','text-button',x.kind==='danmaku'?'跳到弹幕时间点 ↗':'定位这条'+interactionLabels[x.kind]+' ↗');
+     a.href=x.url;a.target='_blank';a.rel='noopener noreferrer';
+     c.append(el('small','muted',when+' · '+x.bvid+timing),a);
+     return c;
+   });
+   for(const warning of data.interactions?.warnings||[])filters.append(el('span','muted',warning));
+ }
  if(tab==='interests')list=interests.filter(match).map((x,i)=>card({title:x.question,body:x.why,badge:({active:'还想弄明白',paused:'先放一放',resolved:'有了一个答案'})[x.status]||'兴趣记录',paused:x.status!=='active',index:i,meta:'延续自 '+date(data.latest.at),action:'看看她怎么想 ↗',onOpen:()=>openDetail({title:x.question,body:x.why+'\n\n她接下来想试：\n'+data.latest.exploration.nextExperiment,at:data.latest.at},'一个持续的问题')}));
  if(tab==='artifacts')list=data.artifacts.filter(match).map((x,i)=>card({title:x.title,body:x.body,badge:names[x.kind]||'手记',index:i,meta:date(x.at),onOpen:()=>openDetail(x,names[x.kind]||'经历手记')}));
  if(tab==='memories')list=data.memories.filter(match).map((x,i)=>card({title:x.title,body:x.body,badge:'保留下来的记忆',index:i,meta:x.truncated?'正文为摘录':'原记录只读展示',onOpen:()=>openDetail(x,'记忆小盒')}));

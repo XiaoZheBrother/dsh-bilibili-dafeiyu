@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
+from interactions import read_interactions
 from pond import Pond, PondError
 import media_actions as media
 
@@ -140,7 +141,7 @@ def read_snapshot(home):
     character=character_snapshot(home)
     character['creations']=sorted(character['creations']+writing_creations(home),key=lambda r:r['at'],reverse=True)[:100]
     return {'readOnly':True,'character':character,'capturedAt':datetime.now(timezone.utc).isoformat(),'warnings':list(dict.fromkeys(warnings+character['warnings'])),
-            'artifacts':artifacts,'latest':latest,'memories':memories,'publications':publications,'catalogAt':catalog_at,
+            'interactions':read_interactions(home),'artifacts':artifacts,'latest':latest,'memories':memories,'publications':publications,'catalogAt':catalog_at,
             'pending':sum(r['state'] in ('pending','running','saved') for r in queue),
             'limits':{'artifactWindow':100,'memoryWindow':40,'publicationWindow':50}}
 

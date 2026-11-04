@@ -20,3 +20,7 @@ main{margin-left:220px;min-height:100vh;padding-right:29vw}.topbar{height:64px;p
 #media-drawer button,#danmaku-form button{cursor:pointer;padding:.45rem .8rem}
 #media-drawer button:disabled{opacity:.5}
 #media-folder{overflow-wrap:anywhere}
+#interaction-types{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 16px}#interaction-types button{cursor:pointer;color:inherit}
+#interaction-types button[aria-pressed=true]{background:#34445b;border-color:#e4c88c;color:#ffe7b4}
+.card.interaction-card .interaction-text{display:block;white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere;color:#f0f1f6;font-size:16px}
+.interaction-card a{display:block;margin-top:10px}
