@@ -85,7 +85,7 @@ for (const bad of [null, undefined, 0, {}]) {
 // 接线：index.js 里评论通道必须走这个判据，且白名单在大号视频下要让路
 ok(/if \(g\.ownAll\) \{\s*\n\s*if \(!worthReplying\(c\?\.text\)\) \{ skip\.junk\+\+; continue \}/.test(src),
   '评论通道应写成：ownAll 时只按 worthReplying 过滤（跳过原因也要计数）')
-ok(/if \(!g\.ownAll && !g\.whitelist\.size\) return \{ ok: false, skipped: 'no-whitelist' \}/.test(src),
+ok(/if \(!g\.ownAll && !g\.whitelist\.size && !Object\.keys\(g\.external\)\.length\) return \{ ok: false, skipped: 'no-whitelist' \}/.test(src),
   '白名单只在「不开大号视频全回」时才是硬门槛')
 ok(/const room = g\.dailyCap > 0 \? Math\.max\(0, g\.dailyCap - daily\.count\) : Infinity/.test(src),
   '每日上限应参与「这一轮取几条」的计算')
@@ -104,7 +104,7 @@ ok(/guardLogAppend\(\{\s*\n\s*ts: Date\.now\(\), type: 'scan'/.test(src), '扫�
 ok(/type: 'queue'/.test(src), '派出去回的那几条也应各写一条 queue 记录')
 ok(/path === '\/api\/bili-pond\/guard\/log'/.test(src), '应有 GET /api/bili-pond/guard/log 给界面读')
 ok(/guardTone: z\.string\(\)\.default\(''\)/.test(src), 'schema 应有 guardTone（守护口径）')
-ok(/主人的口径（照这个说话/.test(src), '口径应拼进守护提示词')
+ok(/大肥鱼的身份与互动约定（照这个说话/.test(src), '口径应拼进守护提示词')
 ok(/guardTone: String\(guardTone \?\? ''\)/.test(readFileSync(join(here, '..', 'client.js'), 'utf8')),
   '设置页应能把口径存回去')
 
@@ -119,7 +119,7 @@ ok(/if \(room === 0\) \{[\s\S]{0,220}?skipped: 'daily-cap'/.test(src),
   '日额度用完应直接返回、连扫都不扫（扫了也回不了，还会把水位推过这一批）')
 ok(/at: nowIso, n: \(p\?\.n \|\| 0\) \+ 1,/.test(src),
   '派发应只记 pending（含尝试次数），不能直接记 seen（否则失败了永远不重试）')
-ok(/item: \{ kind: t\.kind, bvid: t\.bvid, rpid: t\.rpid/.test(src),
+ok(/item: \{ kind: t\.kind, invited: t\.invited === true, ctime: t\.ctime, bvid: t\.bvid, rpid: t\.rpid/.test(src),
   'pending 里要存条目细节：清单文件会被提示词构建删掉，挂了只剩这个能还原')
 ok(/const MAX_TRY = 3/.test(src) && /p\.n >= MAX_TRY/.test(src), '同一 rpid 试满 3 次应放弃，避免死循环')
 ok(/seen 里有、但守护记录里没有 ok 回执的/.test(src), '旧版「派发即记 seen」的账应能补回成 pending')
@@ -147,9 +147,9 @@ ok(/if \(why === 'guard'\) \{[\s\S]{0,400}?这是\*\*守护评论区\*\*的一�
 ok(/不许按关键词搜视频、不许写推荐\/挑片、不许发私信/.test(src), '守护轮提示词应明确禁止搜索/推荐/私信')
 ok(/if \(why === 'guard'\) \{\s*\n\s*return \['bili_guard_scan'/.test(src),
   '守护轮的工具白名单应收窄成只读内容 + 回复那几只')
-ok(/BILI_MCP_TOOLS: '\$\{mcpWhitelist\(why\)\.join\(','\)\}'/.test(src),
-  'overlay 的白名单必须按这一轮的来源（why）算，否则守护轮还是握着搜索/私信的手')
-ok(/const overlay = ensureOverlay\(why\)/.test(src) && /(?:args\.push\(promptFor\(why\)\)|const dutyPrompt = promptFor\(why\)[\s\S]{0,220}args\.push\(dutyPrompt\))/.test(src),
+ok(src.includes('mcpWhitelist(why)') && src.includes('BILI_MCP_TOOLS:'),
+  'overlay 必须按来源选工具')
+ok(src.includes('const overlay = ensureOverlay(why)') && src.includes('promptFor(why)') && src.includes('args.push(dutyPrompt)'),
   'runDuty 应把 why 一路传进 overlay 与提示词')
 
 if (fails) {

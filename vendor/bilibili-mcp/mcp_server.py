@@ -727,10 +727,12 @@ async def bili_subtitle(bvid: str) -> str:
     if not cid:
         return json.dumps({"error": "无法获取cid"}, ensure_ascii=False)
 
+    _read_video[bvid] = "no_subtitles"  # metadata is still required if subtitle retrieval fails
     subtitle_list = await v.get_subtitle(cid=cid)
     subtitles = subtitle_list.get("subtitles", [])
 
     if not subtitles:
+        _read_video[bvid] = "no_subtitles"
         return json.dumps({"message": "该视频没有字幕"}, ensure_ascii=False)
 
     # 优先AI中文字幕
@@ -754,6 +756,7 @@ async def bili_subtitle(bvid: str) -> str:
 
     texts = [item.get("content", "") for item in sub_data.get("body", [])]
     full_text = "\n".join(texts)
+    _read_video[bvid] = "subtitles" if full_text.strip() else "no_subtitles"
 
     return json.dumps({
         "bvid": bvid,
@@ -809,6 +812,8 @@ async def bili_video_info(bvid: str) -> str:
     v = video.Video(bvid=bvid, credential=cred)
     info = await v.get_info()
     stat = info.get("stat", {})
+    if info.get("title") and _read_video.get(bvid)=="no_subtitles":
+        _read_video[bvid]="metadata"
 
     return json.dumps({
         "bvid": info.get("bvid"),
@@ -944,7 +949,33 @@ def _guard_log(entry: dict) -> None:
 import sqlite3
 from datetime import datetime, timezone, timedelta
 
-def feiyu_reserve(db, policy, bvid, rpid, owner, account, text, now=None):
+_read_video = {}
+def external_match(reply, *, aid, rpid, root, account, invitations):
+    """Use the signed-in platform reply itself, never user text or model-supplied UID."""
+    since = invitations.get(str(reply.get("mid")))
+    return (type(since) is int and since > 0 and int(reply.get("ctime") or 0) >= since
+            and int(reply.get("oid") or 0) == aid and int(reply.get("type") or 0) == 1
+            and int(reply.get("rpid") or 0) == rpid and rpid > 0
+            and (int(reply.get("root") or 0) or rpid) == (root or rpid)
+            and str(reply.get("mid")) != str(account) and not reply.get("invisible", False)
+            and any(str(m.get("mid")) == str(account) for m in (reply.get("content",{}).get("members") or [])))
+
+async def external_invite_ok(cred,bvid,aid,rpid,root):
+    folder=Path(__file__).parent
+    if os.environ.get("BILI_GUARD_ROUND")!="1" or _read_video.get(bvid) not in ("subtitles","metadata"):
+        return False
+    pending=json.loads((folder/"guard-state.json").read_text(encoding="utf8")).get("pending",{}).get(str(rpid),{}).get("item",{})
+    if pending.get("kind")!="at" or pending.get("invited") is not True or pending.get("bvid")!=bvid:
+        return False
+    detail=await _bili_api("GET","https://api.bilibili.com/x/v2/reply/detail",cred,
+                           params={"type":1,"oid":aid,"root":rpid})
+    reply=(detail.get("data") or {}).get("root") or {}
+    if detail.get("code")!=0 or str(pending.get("uid"))!=str(reply.get("mid")):return False
+    if json.loads((folder/"config.json").read_text(encoding="utf-8-sig")).get("guardOn") is not True:return False
+    invitations=json.loads((folder/"external-mentions.json").read_text(encoding="utf8"))
+    return external_match(reply, aid=aid,rpid=rpid,root=root,account=cred.dedeuserid,invitations=invitations)
+
+def feiyu_reserve(db, policy, bvid, rpid, owner, account, text, now=None, *, invited=False):
     if not policy.get('enabled'):
         raise ValueError('自动评论尚未启用')
     if not str(policy.get('accountUid','')).isdigit() or str(account) != str(policy['accountUid']):
@@ -957,7 +988,7 @@ def feiyu_reserve(db, policy, bvid, rpid, owner, account, text, now=None):
         raise ValueError('评论内容长度不合要求')
     if rpid < 0:
         raise ValueError('评论 ID 无效')
-    if rpid > 0 and str(owner) != str(account):
+    if rpid > 0 and str(owner) != str(account) and not invited:
         raise ValueError('仅回复自己视频下的评论；其他视频只允许原创评论')
     if rpid == 0 and str(owner) == str(account):
         raise ValueError('自己视频只处理观众回复，不自动新建评论')
@@ -1005,6 +1036,8 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0) -> str:
     Returns:
         发表结果
     """
+    if rpid <= 0 and os.environ.get("BILI_GUARD_ROUND")=="1":
+        return json.dumps({"success":False,"error":"守护轮必须回复指定评论，不能新开楼"},ensure_ascii=False)
     if rpid == 0 and os.environ.get("BILI_CIRCLE_MODE") == "1":
         return json.dumps({"success": False, "error": "圈地自萌开启：禁止发表任何新楼评论"}, ensure_ascii=False)
     cred = get_cred()
@@ -1024,7 +1057,10 @@ async def bili_reply(bvid: str, text: str, rpid: int = 0, root: int = 0) -> str:
         canonical_bvid = info.get('bvid', '')
         if not re.fullmatch(r'BV[0-9A-Za-z]{10}', canonical_bvid):
             raise ValueError('视频规范 BV 号缺失，停止发送')
-        gate_target = feiyu_reserve(gate_db, policy, canonical_bvid, int(rpid), info.get('owner', {}).get('mid'), cred.dedeuserid, text)
+        invited = False
+        if rpid > 0 and str(info.get('owner',{}).get('mid')) != str(cred.dedeuserid):
+            invited = await external_invite_ok(cred,canonical_bvid,int(aid),int(rpid),int(root))
+        gate_target = feiyu_reserve(gate_db, policy, canonical_bvid, int(rpid), info.get('owner', {}).get('mid'), cred.dedeuserid, text, invited=invited)
     except Exception as e:
         return json.dumps({'success': False, 'error': str(e)}, ensure_ascii=False)
     try:
@@ -2491,27 +2527,36 @@ async def bili_guard_scan(
 
     # ---------- 通道 1：@ 我的 ----------
     try:
-        at_resp = await session.get_at(
-            credential=cred,
-            last_id=since_at_id or None,
-            at_time=since_at_time or None,
-        )
+        # The API cursor pages backward. Poll newest first, then traverse older pages.
+        page_args = {}
+        notices = []
+        visited = set()
+        while True:
+            page = await session.get_at(credential=cred, **page_args)
+            batch = page.get("items") or []
+            notices.extend(batch)
+            cursor = page.get("cursor") or {}
+            if (not batch or cursor.get("is_end") or not since_at_time
+                    or min(int(n.get("at_time") or 0) for n in batch) < since_at_time):
+                break
+            next_args = {"last_id":cursor.get("id"),"at_time":cursor.get("time")}
+            key=tuple(next_args.values())
+            if not all(key) or key in visited or len(visited)>=49:raise ValueError("invalid @ pagination")
+            visited.add(key)
+            page_args=next_args
+        at_resp={"items":notices}
     except Exception as e:
-        # @ 通道挂了不该拖累评论通道：两个通道的失败要能分开看（errors 里分前缀）。
         errors.append(f"at: {type(e).__name__}: {e}")
-        at_resp = None
+        at_resp=None
 
     if at_resp:
-        cursor = at_resp.get("cursor") or {}
-        # 服务端没给游标时保留旧水位，理由同上。
-        at_cursor = {
-            "id": int(cursor.get("id") or 0) or at_cursor["id"],
-            "time": int(cursor.get("time") or 0) or at_cursor["time"],
-        }
-
+        for n in at_resp["items"]:
+            at_cursor["id"]=max(at_cursor["id"],int(n.get("id") or 0))
+            at_cursor["time"]=max(at_cursor["time"],int(n.get("at_time") or 0))
         for it in (at_resp.get("items") or []):
             at_user = it.get("user") or {}
             at_item = it.get("item") or {}
+            if at_item.get("type")!="reply" or int(at_item.get("business_id") or 0)!=1:continue
             at_time = int(it.get("at_time") or 0)
             # SDK 已经按 last_id/at_time 做了服务端增量，这里再挡一道：
             # 用 >= 而不是 >，因为 at_time 只到秒，同一秒内的多条 @ 会被 > 误杀；
@@ -2533,7 +2578,8 @@ async def bili_guard_scan(
                 # 这两个不是同一个东西，回复时要用 rpid，对账时要用 aid。
                 "aid": int(at_item.get("subject_id") or 0),
                 "rpid": int(at_item.get("source_id") or 0),
-                "root_id": int(at_item.get("root_id") or 0),
+                "root_id": int(at_item.get("root_id") or
+                    (re.findall(r"[?&]comment_root_id=(\d+)",at_item.get("native_uri") or "") or [0])[0]),
                 "text": at_item.get("source_content", ""),
             })
 

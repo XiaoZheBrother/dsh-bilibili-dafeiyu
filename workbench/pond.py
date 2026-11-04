@@ -1,4 +1,6 @@
 """Narrow adapter to the existing local pond. Never starts a duty runner."""
+import os
+import re
 import hashlib
 import json
 import secrets
@@ -46,6 +48,34 @@ class Pond:
     @staticmethod
     def revision(config):return hashlib.sha256(json.dumps(config,sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
+    def external_mentions(self):
+        path=self.home/'bili-duty/external-mentions.json'
+        try:
+            data=json.loads(path.read_text(encoding='utf8'))
+            if not isinstance(data,dict) or any(not re.fullmatch(r'[1-9][0-9]{0,15}',k) or type(v) is not int for k,v in data.items()):
+                raise ValueError()
+            return data
+        except FileNotFoundError:return {}
+        except (ValueError,OSError):raise PondError(503,'外部 @ 名单不可读，请检查配置')
+
+    def save_mentions(self,body):
+        if not isinstance(body,dict) or set(body)!={'revision','uids'} or not isinstance(body['uids'],list):
+            raise PondError(400,'请提供 UID 列表')
+        uids=body['uids']
+        if len(uids)>32 or any(not isinstance(u,str) or not re.fullmatch(r'[1-9][0-9]{0,15}',u) or int(u)>9007199254740991 for u in uids):
+            raise PondError(400,'最多 32 个账号，请填写有效的数字 UID')
+        with self.lock:
+            old=self.external_mentions()
+            if body['revision']!=self.revision(old):raise PondError(409,'名单已变化，请重新读取')
+            path=self.home/'bili-duty/external-mentions.json'
+            data={u:old.get(u,int(time.time())+1) for u in uids}
+            tmp=path.with_suffix('.'+secrets.token_hex(8)+'.tmp')
+            try:
+                tmp.write_text(json.dumps(data),encoding='utf8')
+                os.replace(tmp,path)
+            finally:tmp.unlink(missing_ok=True)
+            return {'uids':list(data),'revision':self.revision(data)}
+
     def settings(self):
         raw=self.call('status');cfg=self.public(raw.get('config',{}))
         policies={}
@@ -55,7 +85,8 @@ class Pond:
                 source=json.loads((self.home/'bili-duty'/filename).read_text(encoding='utf-8-sig'))
                 policies[filename]={k:source[k] for k in fields if k in source}
             except (OSError,ValueError,TypeError):policies[filename]=None
-        return {'config':cfg,'revision':self.revision(cfg),'csrf':self.token,'policies':policies,
+        mentions=self.external_mentions()
+        return {'externalMentions':{'uids':list(mentions),'revision':self.revision(mentions)},'config':cfg,'revision':self.revision(cfg),'csrf':self.token,'policies':policies,
                 'status':{k:raw.get(k) for k in ('loggedIn','venvReady','running','finalizing','roundsToday','pickedToday','asrUsedToday','lastRunAt','version')},
                 'notSynced':[k for k in raw.get('notSynced',[]) if k in FIELDS]}
 
