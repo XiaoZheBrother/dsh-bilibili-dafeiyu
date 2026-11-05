@@ -28,14 +28,15 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self,*args,**kwargs):return None
 
 class Pond:
-    def __init__(self,home):
+    def __init__(self,home,origin='http://127.0.0.1:3086'):
+        self.origin=origin
         self.home=home;self.token=secrets.token_urlsafe(32);self.lock=threading.Lock();self.login=None
         self.http=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect())
 
     def call(self,path,body=None):
         # No caller-controlled host, path, proxy, cookies or redirect forwarding.
         if path not in ('status','config','models','login/start','login/poll'):raise PondError(404,'不支持的操作')
-        req=urllib.request.Request('http://127.0.0.1:3086/api/bili-pond/'+path,
+        req=urllib.request.Request(self.origin+'/api/bili-pond/'+path,
              data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json'})
         try:
             with self.http.open(req,timeout=20) as r:

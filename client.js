@@ -12,7 +12,7 @@
  *
  *     const slots = ctx.get('slots')
  *     slots.inject('settings.section', () => slots.register(
- *       { name: 'settings.section', id: 'bili-pond', order: 30, label: 'B站鱼塘' },
+ *       { name: 'settings.section', id: 'bili-pond', order: 30, label: '大肥鱼工作台' },
  *       () => h(Panel),
  *     ))
  *
@@ -2332,7 +2332,7 @@ window.__ModuleLoader__.load({
 
     function PondIcon({ size = 20, active }) {
       return h('img', {
-        src: POND_ICON, alt: 'B站鱼塘', width: size, height: size,
+        src: POND_ICON, alt: '大肥鱼工作台', width: size, height: size,
         style: { borderRadius: Math.round(size / 4), display: 'block', opacity: active ? 1 : 0.85 },
       })
     }
@@ -2843,6 +2843,19 @@ window.__ModuleLoader__.load({
       ])
     }
 
+    function StudioPage() {
+      const [state,setState] = React.useState({})
+      React.useEffect(() => {
+        let live = true
+        jget('/studio-location').then(value => {if(live)setState(value)})
+          .catch(error => {if(live)setState({error:error.message})})
+        return () => {live = false}
+      },[])
+      if(state.error) return h('p',null,'工作台加载失败：'+state.error+'。请确认服务端已更新并重启 DSH。')
+      if(!state.url) return h('p',null,'正在打开大肥鱼工作台…')
+      return h('iframe',{src:state.url,title:'大肥鱼工作台',style:{width:'100%',height:'100%',minHeight:'80vh',border:0,display:'block'}})
+    }
+
     return {
       inject: ['slots', 'layout'],
       apply(ctx) {
@@ -2856,7 +2869,7 @@ window.__ModuleLoader__.load({
         const slots = (typeof ctx.get === 'function' ? ctx.get('slots') : undefined) || ctx.slots
         if (!slots) return
         slots.inject('settings.section', () => slots.register(
-          { name: 'settings.section', id: 'bili-pond', order: 30, label: 'B站鱼塘' },
+          { name: 'settings.section', id: 'bili-pond', order: 30, label: '大肥鱼工作台' },
           () => h(Panel, { layout: 'summary' }),
         ))
 
@@ -2868,12 +2881,12 @@ window.__ModuleLoader__.load({
           } catch (e) { /* 拿不到 layout 就只留图标入口，不影响页面本身 */ }
         }
         slots.inject('sidebar.panellist', () => slots.register(
-          { name: 'sidebar.panellist', id: POND_ID, order: 5, label: 'B站鱼塘' },
+          { name: 'sidebar.panellist', id: POND_ID, order: 5, label: '大肥鱼工作台' },
           () => h(PondIcon),
         ))
         slots.inject('main', () => slots.register(
           { name: 'main', key: POND_ID },
-          () => h(PondPage),
+          () => h(StudioPage),
         ))
       },
     }

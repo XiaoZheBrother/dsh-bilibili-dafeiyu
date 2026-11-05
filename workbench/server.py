@@ -233,9 +233,17 @@ def handler_for(home,port,pond=None):
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--home',type=Path,default=DEFAULT_HOME);parser.add_argument('--port',type=int,default=3087)
+    parser.add_argument('--pond-origin',default='http://127.0.0.1:3086')
     args=parser.parse_args()
-    server=ThreadingHTTPServer(('127.0.0.1',args.port),handler_for(args.home,args.port))
-    print(f'Feiyu Studio: http://127.0.0.1:{args.port}',flush=True)
+    server=ThreadingHTTPServer(('127.0.0.1',args.port),handler_for(args.home,args.port,Pond(args.home,args.pond_origin)))
+    server.RequestHandlerClass=handler_for(args.home,server.server_port,Pond(args.home,args.pond_origin))
+    if os.environ.get('FEIYU_STUDIO_CHILD')=='1':
+        import threading,sys
+        def parent_closed():
+            sys.stdin.buffer.read()
+            server.shutdown()
+        threading.Thread(target=parent_closed,daemon=True).start()
+    print(f'Feiyu Studio: http://127.0.0.1:{server.server_port}',flush=True)
     try:server.serve_forever()
     except KeyboardInterrupt:pass
     finally:server.server_close()

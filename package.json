@@ -1,6 +1,6 @@
 {
   "name": "dsh-bilibili-dafeiyu",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "大肥鱼成长运行插件：真实经历、持续好奇、关系记忆与自己的创作",
   "keywords": [
     "dsh",
@@ -75,7 +75,7 @@
     }
   },
   "scripts": {
-    "test": "node --test test-owner.mjs test-character.mjs test-growth-bridge.mjs",
+    "test": "node --test test-owner.mjs test-character.mjs test-growth-bridge.mjs test-studio.mjs",
     "check:upstream": "node --import ./tools/register.mjs selfcheck.mjs && node tools/_check-1016.mjs && node tools/test-migrate.mjs && node tools/test-comment-cap.mjs && node tools/test-reuse-routes.mjs && node tools/test-host-default-model.mjs && node tools/test-guard.mjs && node tools/test-guard-watermark.mjs && node tools/test-duty-workspace.mjs && node tools/test-history.mjs && node tools/test-pond-page.mjs && node tools/test-circle-config.mjs && node tools/test-intent-lines.mjs && node tools/test-likes.mjs && python tools/test-circle.py"
   },
   "author": {

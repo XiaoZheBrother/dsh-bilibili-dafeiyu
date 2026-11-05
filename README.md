@@ -30,12 +30,12 @@
 
 已在 Windows 的 DSH `web` profile 验证。以下命令使用 PowerShell，环境为 DeepSeek Harness 0.2.1-rc.5、Node.js 22.19+。基础工作台需要 Python 3.10+，使用投稿功能请用 **Python 3.11+** 启动工作台。
 
-**1. 安装插件。** 为角色指定独立的数据目录，从 [GitHub Release](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/tag/v0.2.6) 下载发行包。
+**1. 安装插件。** 为角色指定独立的数据目录，从 [GitHub Release](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/tag/v0.2.7) 下载发行包。
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
-$archive = Join-Path $env:TEMP 'dsh-bilibili-dafeiyu-0.2.6.tgz'
-curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.6/dsh-bilibili-dafeiyu-0.2.6.tgz' -o $archive
+$archive = Join-Path $env:TEMP 'dsh-bilibili-dafeiyu-0.2.7.tgz'
+curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.7/dsh-bilibili-dafeiyu-0.2.7.tgz' -o $archive
 dsh plugin --profile web add "$archive"
 $plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-bilibili-dafeiyu'
 ```
@@ -48,7 +48,9 @@ node "$plugin/bin/manage.mjs" doctor "$env:DSH_HOME"
 dsh web --port 3086 --no-open
 ```
 
-**3. 打开工作台。** 另开一个 PowerShell 窗口，运行以下命令，然后前往[本机工作台](http://127.0.0.1:3087/)，在「运行设置」用绑定的 B 站账号扫码。
+**3. 在 DSH 里打开工作台。** 重启 DSH 后，点击左侧「大肥鱼工作台」。页面服务由插件启动并沿用当前 DSH 数据目录。在「运行设置」用绑定的 B 站账号扫码。首次打开需要系统能运行 Python，或先到 DSH 设置中的「大肥鱼工作台」安装运行环境。
+
+也可以单独启动浏览器版，使用同一份数据。
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
