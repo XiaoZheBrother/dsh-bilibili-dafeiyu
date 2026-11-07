@@ -11,8 +11,8 @@
 | 插件 / GitHub | 用来做什么 | 当前状态 |
 | --- | --- | --- |
 | [dsh-agent-growth](https://github.com/XiaoZheBrother/dsh-agent-growth) | 从真实素材中学习、选题、复盘和整理记忆；与工作台配合记录成长 | 仓库已公开；新增经验复查功能仍在开发版 |
-| [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | **仓库待公开**，当前地址为预留地址，暂时无法访问或安装 |
-| [dsh-game-agent](https://github.com/XiaoZheBrother/dsh-game-agent) | 自主玩游戏、接受观众指令、自动续局和对局复盘 | **仓库待公开**，当前地址为预留地址，暂时无法访问或安装 |
+| [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | 仓库已公开；开发预览，可从源码打包安装 |
+| [dsh-game-agent](https://github.com/XiaoZheBrother/dsh-game-agent) | 自主玩游戏、接受观众指令、自动续局和对局复盘 | 仓库已公开；开发预览，可从源码打包安装 |
 
 - 只做 B 站视频、评论和日常互动：使用本工作台，按需搭配成长插件。
 - 做纯聊天直播：搭配直播工作室。
@@ -98,4 +98,4 @@ python -m venv "$media"
 
 侧栏新增「直播与游戏」。它读取同一 DSH home 中独立插件的服务登记，验证本机服务身份后显示控制台和直播画面入口。页面只读，不会重启服务或新增后台任务。
 
-直播使用 `dsh-live-studio`，游戏使用 `dsh-game-agent`（包含直播能力）；两者按需启用，不能让同一个直播间同时运行两个接收器。插件仍在本地开发验收阶段，暂未发布安装地址。B 站投稿、评论及记忆数据不迁移到直播插件。
+直播使用 `dsh-live-studio`，游戏使用 `dsh-game-agent`（包含直播能力）；两者按需启用，不能让同一个直播间同时运行两个接收器。源码仓库和组合方式见上方「和本鱼一起长大的插件」；当前为开发预览，可按各仓库 README 从源码打包安装，尚未完成真实直播和完整对局验收。B 站投稿、评论及记忆数据不迁移到直播插件。
