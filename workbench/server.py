@@ -1,3 +1,4 @@
+import plugin_hub
 """Loopback viewer and narrow settings adapter; no model or scheduler execution."""
 import argparse
 import json
@@ -15,7 +16,7 @@ import media_actions as media
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_HOME = Path(os.environ.get('DSH_HOME', str(Path.home()/'.dsh')))
-STATIC = {'/media.js': ('media.js','text/javascript; charset=utf-8'), '/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
+STATIC = {'/plugins.js': ('plugins.js','text/javascript; charset=utf-8'), '/media.js': ('media.js','text/javascript; charset=utf-8'), '/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
           '/style.css': ('style.css','text/css; charset=utf-8'),
           '/settings.js': ('settings.js','text/javascript; charset=utf-8'),
           '/assets/moonlit-whale-v1.png': ('assets/moonlit-whale-v1.png','image/png'),
@@ -175,6 +176,8 @@ def handler_for(home,port,pond=None):
             if self.headers.get('Sec-Fetch-Site')=='cross-site':
                 return self.respond(403,b'{"error":"cross site denied"}')
             path=urlsplit(self.path).path
+            if path=='/api/plugins':
+                return self.respond(200,json.dumps(plugin_hub.dashboard(home),ensure_ascii=False).encode())
             if path=='/api/media':
                 try:
                     value=media.dashboard(home)
