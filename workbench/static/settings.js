@@ -35,7 +35,7 @@
   const form=e.currentTarget,fieldset=form.querySelector('fieldset');fieldset.disabled=true;
   try{
    current.commentPrefill=await request('/api/comment-prefill',{revision:current.commentPrefill.revision,enabled:q('#prefill-enabled').checked,prefix:q('#prefill-text').value});
-   prefillDirty=false;message(current.commentPrefill.enabled?'评论预填充已开启，下次定稿使用新设置。':'评论预填充已关闭，前缀已保留。');
+   prefillDirty=false;message(current.commentPrefill.enabled?'推理前缀已开启，下一次表达使用新设置。':'推理前缀已关闭，填充词已保留。');
   }catch(error){message(error.message)}finally{fieldset.disabled=false}
  };
  q('#mentions-form').onsubmit=async e=>{

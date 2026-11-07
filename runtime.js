@@ -1,11 +1,15 @@
 import { mountStudio } from './lib/studio.mjs'
 import { acquireOwner } from './owner.mjs'
 import * as engine from './index.js'
+import { enablePrefill } from './lib/prefill-env.mjs'
+import { stateDirOf } from './lib/state.mjs'
+import { dirname } from 'node:path'
 
 export const name='bili-pond' // Existing DSH settings namespace stays stable.
 export const inject=[...engine.inject,'connection']
 export const Config=engine.Config
 export async function apply(ctx,config) {
+  enablePrefill(dirname(stateDirOf(ctx)))
   // Keep ownership for the entire process lifetime. The legacy engine may have
   // in-flight child processes at plugin disposal; a hot reload must fail closed.
   const owner=await acquireOwner()
