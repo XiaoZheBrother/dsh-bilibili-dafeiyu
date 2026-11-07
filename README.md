@@ -4,34 +4,6 @@
 
 > 这个插件，大肥鱼本鱼也亲自参与制作啦！大家尽管拿去用、改成自己喜欢的样子。要是帮上忙了，给本鱼点个星星 ⭐ 呗？求求啦～ —— 大肥鱼
 
-## 和本鱼一起长大的插件
-
-这几个插件可以按需要组合，分别负责 B 站日常、学习记忆、直播和游戏，不必把所有功能都装上。
-
-| 插件 / GitHub | 用来做什么 | 当前状态 |
-| --- | --- | --- |
-| [dsh-agent-growth](https://github.com/XiaoZheBrother/dsh-agent-growth) | 从真实素材中学习、选题、复盘和整理记忆；与工作台配合记录成长 | 仓库已公开；新增经验复查功能仍在开发版 |
-| [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | 仓库已公开；开发预览，可从源码打包安装 |
-| [dsh-game-agent](https://github.com/XiaoZheBrother/dsh-game-agent) | 自主玩游戏、接受观众指令、自动续局和对局复盘 | 仓库已公开；开发预览，可从源码打包安装 |
-
-- 只做 B 站视频、评论和日常互动：使用本工作台，按需搭配成长插件。
-- 做纯聊天直播：搭配直播工作室。
-- 做游戏直播：游戏插件依赖直播工作室提供的能力；同一个直播间只启用游戏模式的接收器，避免重复回复和语音。
-
-各插件的配置、安装方法和许可证见对应 README、LICENSE 与 NOTICE。大肥鱼的角色素材、游戏资源需要另行准备。
-
-### 直播能做成什么样？
-
-下面是此前直播搭建与红警联调时保存的画面，布局可能与当前版本有所不同；角色模型和游戏资源需自行准备。
-
-**纯聊天直播：Live2D 角色、海底房间和花费账本。** 更多带字幕的直播姬预览见 [直播工作室](https://github.com/XiaoZheBrother/dsh-live-studio#直播效果)。
-
-![大肥鱼纯聊天直播场景与花费账本](https://raw.githubusercontent.com/XiaoZheBrother/dsh-live-studio/5b2ba82c524280b0f1814c0bb5ca162582cca375/docs/screenshots/chat-scene.jpg)
-
-**红警游戏直播的早期布局：左侧游戏、右侧大肥鱼和账本。** 本图处于遭遇战设置阶段，实际战场截图见 [游戏 Agent](https://github.com/XiaoZheBrother/dsh-game-agent#游戏直播效果)。
-
-![大肥鱼红警游戏直播早期布局预览](https://raw.githubusercontent.com/XiaoZheBrother/dsh-game-agent/f210d6785ba3dda11321e49c93fe4bfa446284cb/docs/screenshots/game-stream-layout.jpg)
-
 ## 她能在 B 站做什么？
 
 | 你想让她做的事 | 在工作台里会看到什么 |
@@ -105,6 +77,34 @@ python -m venv "$media"
 
 [发行版本](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases) · [许可证](LICENSE) · [第三方来源](NOTICE.md)
 
+
+## 和本鱼一起长大的插件
+
+这几个插件可以按需要组合，分别负责 B 站日常、学习记忆、直播和游戏，不必把所有功能都装上。
+
+| 插件 / GitHub | 用来做什么 | 当前状态 |
+| --- | --- | --- |
+| [dsh-agent-growth](https://github.com/XiaoZheBrother/dsh-agent-growth) | 从真实素材中学习、选题、复盘和整理记忆；与工作台配合记录成长 | 仓库已公开；新增经验复查功能仍在开发版 |
+| [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | 仓库已公开；开发预览，可从源码打包安装 |
+| [dsh-game-agent](https://github.com/XiaoZheBrother/dsh-game-agent) | 自主玩游戏、接受观众指令、自动续局和对局复盘 | 仓库已公开；开发预览，可从源码打包安装 |
+
+- 只做 B 站视频、评论和日常互动：使用本工作台，按需搭配成长插件。
+- 做纯聊天直播：搭配直播工作室。
+- 做游戏直播：游戏插件依赖直播工作室提供的能力；同一个直播间只启用游戏模式的接收器，避免重复回复和语音。
+
+各插件的配置、安装方法和许可证见对应 README、LICENSE 与 NOTICE。大肥鱼的角色素材、游戏资源需要另行准备。
+
+### 直播能做成什么样？
+
+下面是此前直播搭建与红警联调时保存的画面，布局可能与当前版本有所不同；角色模型和游戏资源需自行准备。
+
+**纯聊天直播：Live2D 角色、海底房间和花费账本。** 更多带字幕的直播姬预览见 [直播工作室](https://github.com/XiaoZheBrother/dsh-live-studio#直播效果)。
+
+![大肥鱼纯聊天直播场景与花费账本](https://raw.githubusercontent.com/XiaoZheBrother/dsh-live-studio/5b2ba82c524280b0f1814c0bb5ca162582cca375/docs/screenshots/chat-scene.jpg)
+
+**红警游戏直播的早期布局：左侧游戏、右侧大肥鱼和账本。** 本图处于遭遇战设置阶段，实际战场截图见 [游戏 Agent](https://github.com/XiaoZheBrother/dsh-game-agent#游戏直播效果)。
+
+![大肥鱼红警游戏直播早期布局预览](https://raw.githubusercontent.com/XiaoZheBrother/dsh-game-agent/f210d6785ba3dda11321e49c93fe4bfa446284cb/docs/screenshots/game-stream-layout.jpg)
 
 ## 开发预览：直播与游戏入口
 
