@@ -20,6 +20,18 @@
 
 各插件的配置、安装方法和许可证见对应 README、LICENSE 与 NOTICE。大肥鱼的角色素材、游戏资源需要另行准备。
 
+### 直播能做成什么样？
+
+下面是此前直播搭建与红警联调时保存的画面，布局可能与当前版本有所不同；角色模型和游戏资源需自行准备。
+
+**纯聊天直播：Live2D 角色、海底房间和花费账本。** 更多带字幕的直播姬预览见 [直播工作室](https://github.com/XiaoZheBrother/dsh-live-studio#直播效果)。
+
+![大肥鱼纯聊天直播场景与花费账本](https://raw.githubusercontent.com/XiaoZheBrother/dsh-live-studio/5b2ba82c524280b0f1814c0bb5ca162582cca375/docs/screenshots/chat-scene.jpg)
+
+**红警游戏直播的早期布局：左侧游戏、右侧大肥鱼和账本。** 本图处于遭遇战设置阶段，实际战场截图见 [游戏 Agent](https://github.com/XiaoZheBrother/dsh-game-agent#游戏直播效果)。
+
+![大肥鱼红警游戏直播早期布局预览](https://raw.githubusercontent.com/XiaoZheBrother/dsh-game-agent/f210d6785ba3dda11321e49c93fe4bfa446284cb/docs/screenshots/game-stream-layout.jpg)
+
 ## 她能在 B 站做什么？
 
 | 你想让她做的事 | 在工作台里会看到什么 |
