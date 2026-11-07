@@ -30,12 +30,12 @@
 
 已在 Windows 的 DSH `web` profile 验证。以下命令使用 PowerShell，环境为 DeepSeek Harness 0.2.1-rc.5、Node.js 22.19+。基础工作台需要 Python 3.10+，使用投稿功能请用 **Python 3.11+** 启动工作台。
 
-**1. 安装插件。** 为角色指定独立的数据目录，从 [GitHub Release](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/tag/v0.2.7) 下载发行包。
+**1. 安装插件。** 为角色指定独立的数据目录，从 [GitHub Release](https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/tag/v0.3.0) 下载发行包。
 
 ```powershell
 $env:DSH_HOME = Join-Path $env:USERPROFILE '.dsh-dafeiyu'
-$archive = Join-Path $env:TEMP 'dsh-bilibili-dafeiyu-0.2.7.tgz'
-curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.2.7/dsh-bilibili-dafeiyu-0.2.7.tgz' -o $archive
+$archive = Join-Path $env:TEMP 'dsh-bilibili-dafeiyu-0.3.0.tgz'
+curl.exe -fL 'https://github.com/XiaoZheBrother/dsh-bilibili-dafeiyu/releases/download/v0.3.0/dsh-bilibili-dafeiyu-0.3.0.tgz' -o $archive
 dsh plugin --profile web add "$archive"
 $plugin = Join-Path $env:DSH_HOME 'profiles/web/node_modules/dsh-bilibili-dafeiyu'
 ```
@@ -61,8 +61,8 @@ python "$plugin/workbench/server.py" --home "$env:DSH_HOME" --port 3087
 ## 按需开启
 
 - **评论和弹幕。** 初始化时，`DSH_HOME/bili-duty/feiyu-policy.json` 中的 `enabled` 为 `false`。核对其中的 `accountUid` 并决定允许角色公开互动后，将 `enabled` 设为 `true`，再在「运行设置」选择自动浏览、普通评论、评论守护或自动弹幕。普通评论和回复共用每天最多 20 次尝试的额度，同一目标最多一次，两次公开评论至少间隔 5 分钟。弹幕单独计数。
-- **评论语气。** 在「运行设置 → 评论语气」可以开启推理预填充，自定义最多 500 字的思考前缀。启用后，每次定稿会使用环境或 DSH 凭据中的 `DEEPSEEK_API_KEY` 额外调用一次 DeepSeek Beta API。
-- **学习、选题与复盘。** 在同一个 `web` profile 安装 [dsh-agent-growth v0.2.0](https://github.com/XiaoZheBrother/dsh-agent-growth/releases/tag/v0.2.0)，使用宿主模型。将成长插件数据目录设为 `DSH_HOME/agent-growth`，时区用 `Asia/Shanghai`，每日预算设为 5，开启 `autoRun`、关闭 `memoryReview`。再到 `DSH_HOME/feiyu-runtime/config.json` 将 `growthOwner` 设为 `runtime`，`memoryName` 填自己的 Soul 角色名，重启 DSH。
+- **统一推理前缀。** 在「运行设置 → 大肥鱼的推理前缀」选择开关和填充词。支持当前 api.deepseek.com 官方 DeepSeek 调用链路（不自动覆盖自定义网关）；主对话与工具任务保留工具流程，最后对外表达单独定稿，写稿和评论沿用同一设置。游戏结构化操作计划不改写，面向观众的文字回复单独处理。每次请求读取配置，可能增加 Token 和延迟；独立直播插件需使用已接入同一配置的版本。
+- **学习、选题与复盘。** 在同一个 `web` profile 安装 [dsh-agent-growth v0.3.0](https://github.com/XiaoZheBrother/dsh-agent-growth/releases/tag/v0.3.0)，使用宿主模型。将成长插件数据目录设为 `DSH_HOME/agent-growth`，时区用 `Asia/Shanghai`，每日预算设为 5，开启 `autoRun`、关闭 `memoryReview`。再到 `DSH_HOME/feiyu-runtime/config.json` 将 `growthOwner` 设为 `runtime`，`memoryName` 填自己的 Soul 角色名，重启 DSH。
 - **投稿与弹幕工具。** 这两项复用 [bili-cli](https://github.com/kukemc/bili-cli) 和角色已绑定的账号。在设好 `DSH_HOME` 的窗口，用已安装的 Python 3.11+ 和 Git 运行以下命令。
 
 ```powershell
@@ -70,6 +70,13 @@ $media = Join-Path $env:DSH_HOME 'feiyu-runtime/media-venv'
 python -m venv "$media"
 & "$media/Scripts/python.exe" -m pip install 'bili-agent @ git+https://github.com/kukemc/bili-cli.git@39fecb3fdc67f17d545c669bcb088d4de048d956'
 ```
+
+
+## 自己决定关注与收尾
+
+搭配成长插件 v0.3.0，角色会记录问题是谁提出的、自己为什么也想关注，并选择继续、等待或结束。等待可以指定复查时间；结束不会仅因跨天或重启而重开。新资料只邀请她重新考虑，不要求恢复旧话题。沿用现有调度和额度，不增加第二套任务。
+
+这是关注回合的收尾，不是固定告别语，也不影响评论守护响应新的问题。旧兴趣、经历和记忆继续保留。[机制与验证边界](docs/attention-lifecycle.md)。
 
 ## 数据与升级
 
@@ -84,7 +91,7 @@ python -m venv "$media"
 
 | 插件 / GitHub | 用来做什么 | 当前状态 |
 | --- | --- | --- |
-| [dsh-agent-growth](https://github.com/XiaoZheBrother/dsh-agent-growth) | 从真实素材中学习、选题、复盘和整理记忆；与工作台配合记录成长 | 仓库已公开；新增经验复查功能仍在开发版 |
+| [dsh-agent-growth](https://github.com/XiaoZheBrother/dsh-agent-growth) | 从真实素材中学习、选题、复盘和整理记忆；与工作台配合记录成长 | v0.3.0：自主关注、可复查经验与保留历史的修订 |
 | [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | 仓库已公开；开发预览，可从源码打包安装 |
 | [dsh-game-agent](https://github.com/XiaoZheBrother/dsh-game-agent) | 自主玩游戏、接受观众指令、自动续局和对局复盘 | 仓库已公开；开发预览，可从源码打包安装 |
 
@@ -96,17 +103,17 @@ python -m venv "$media"
 
 ### 直播能做成什么样？
 
-下面是此前直播搭建与红警联调时保存的画面，布局可能与当前版本有所不同；角色模型和游戏资源需自行准备。
+下面两张取自本期视频中的聊天与游戏实际运行录屏；角色模型和游戏资源需自行准备。
 
-**纯聊天直播：Live2D 角色、海底房间和花费账本。** 更多带字幕的直播姬预览见 [直播工作室](https://github.com/XiaoZheBrother/dsh-live-studio#直播效果)。
+**聊天直播实际运行画面：弹幕进入聊天室，大肥鱼生成语音与字幕回复。**
 
-![大肥鱼纯聊天直播场景与花费账本](https://raw.githubusercontent.com/XiaoZheBrother/dsh-live-studio/5b2ba82c524280b0f1814c0bb5ca162582cca375/docs/screenshots/chat-scene.jpg)
+![聊天直播实际运行录屏截帧](docs/screenshots/live-chat-current.jpg)
 
-**红警游戏直播的早期布局：左侧游戏、右侧大肥鱼和账本。** 本图处于遭遇战设置阶段，实际战场截图见 [游戏 Agent](https://github.com/XiaoZheBrother/dsh-game-agent#游戏直播效果)。
+**红警实际运行画面：游戏、大肥鱼、字幕和花费账本同屏。截图展示画面接入，不代表每条游戏指令均执行成功。**
 
-![大肥鱼红警游戏直播早期布局预览](https://raw.githubusercontent.com/XiaoZheBrother/dsh-game-agent/f210d6785ba3dda11321e49c93fe4bfa446284cb/docs/screenshots/game-stream-layout.jpg)
+![红警游戏实际运行录屏截帧](docs/screenshots/live-game-current.jpg)
 
-## 开发预览：直播与游戏入口
+## 直播与游戏入口
 
 侧栏新增「直播与游戏」。它读取同一 DSH home 中独立插件的服务登记，验证本机服务身份后显示控制台和直播画面入口。页面只读，不会重启服务或新增后台任务。
 

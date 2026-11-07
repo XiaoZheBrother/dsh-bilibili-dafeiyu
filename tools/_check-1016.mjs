@@ -46,7 +46,7 @@ ok(!duty.includes('判重表就在家目录根下'), 'duty.md 里旧的"家目�
 
 // ④ 编码
 ok(idx.includes("PYTHONUTF8: '1'"), 'index.js 里没有 PYTHONUTF8')
-ok(idx.includes('env: pyEnv(),'), '内置 MCP 的 env 没走 pyEnv')
+ok(/env: pyEnv\((?:env \|\| \{\})?\)/.test(idx), '内置 MCP 的 env 没走 pyEnv')
 ok(asr.includes("sys.stdout.reconfigure(encoding='utf-8'"), 'asr.py 没有 reconfigure stdout')
 
 // ⑤ 设置页文案
@@ -55,11 +55,11 @@ ok(asr.includes("sys.stdout.reconfigure(encoding='utf-8'"), 'asr.py 没有 recon
 ok(cli.includes('当前开启无效'), 'client.js 的转写提示没改（未装时必须说清"开了也没用"）')
 
 // ⑥ README：新内容在，旧的错内容不在
-ok(readme.includes('桌面版 DSH（NEXT / 0.2.x）'), 'README 没加桌面版提醒')
-ok(readme.includes('装不上 / 卡住时'), 'README 没加"装不上"那一节')
+ok(readme.includes('0.2.1-rc.5'), 'README 未标明验收过的 DSH 版本')
+ok(readme.includes('安装运行环境'), 'README 未说明运行环境安装入口')
 ok(!readme.includes('add dsh-bili-duty'), 'README 里还留着旧包名 dsh-bili-duty')
 ok(!readme.includes('工作目录 = 你填的工作区'), 'README 里还写着"工作目录 = 你的工作区"（是错的）')
-ok(readme.includes('用那一份、跳过下载'), 'README 没写 uv.exe 手动兜底')
+ok(readme.includes('Python 3.11+'), 'README 未说明投稿所需 Python 版本')
 
 // ⑦ 评论发出后复核（2026-10-16 加的）
 const verify = readFileSync(P + 'lib/verify.mjs', 'utf8')
@@ -222,7 +222,7 @@ ok(cli.includes('只发私信') && cli.includes('评论 + 私信') && cli.includ
 
 // ㉑ 同一时间只能有一轮：宿主端必须挡住并发，前端按钮也要跟着灰
 //    2026-10-20 实测：按钮只灰"发请求"那一两秒 ⇒ 跑起来后又可点 ⇒ 能开出第二个 headless 进程
-ok(idx.includes('if (dutyRun) {'), 'runDuty 里没有"上一轮还在跑就别再开"的闸')
+ok(/if\s*\(dutyRun\s*\|\|\s*dutyFinalizing\)/.test(idx), 'runDuty 缺少运行与收尾期间的互斥闸')
 ok(idx.includes('busy: true'), '并发被挡住时没告诉调用方 busy（前端/工具会以为失败了）')
 ok(cli.includes("disabled: busy === 'run' || Boolean(st.running)"), '「立即运行一轮」按钮没跟着 running 变灰')
 ok(idx.includes('不会重复开（返回 busy）'), 'bili_run 工具没声明"不会重复开"')
