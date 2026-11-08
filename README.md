@@ -92,12 +92,15 @@ python -m venv "$media"
 | 插件 / GitHub | 用来做什么 | 当前状态 |
 | --- | --- | --- |
 | [dsh-agent-growth](https://github.com/XiaoZheBrother/dsh-agent-growth) | 从真实素材中学习、选题、复盘和整理记忆；与工作台配合记录成长 | v0.3.0：自主关注、可复查经验与保留历史的修订 |
-| [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | 仓库已公开；开发预览，可从源码打包安装 |
+| [dsh-live-studio](https://github.com/XiaoZheBrother/dsh-live-studio) | 直播弹幕、语音回复、Live2D 桥接和花费账本 | v0.2.0-alpha.1：共享表情/动作组件、统一推理前缀 |
 | [dsh-game-agent](https://github.com/XiaoZheBrother/dsh-game-agent) | 自主玩游戏、接受观众指令、自动续局和对局复盘 | 仓库已公开；开发预览，可从源码打包安装 |
+| [dsh-reaction-studio](https://github.com/XiaoZheBrother/dsh-reaction-studio) | 离线陪看、连续剧情理解、自主暂停分析、语音/字幕/Live2D 合成 | v0.1.0-alpha.1 开发预览；听觉识别为可选实验 |
 
 - 只做 B 站视频、评论和日常互动：使用本工作台，按需搭配成长插件。
 - 做纯聊天直播：搭配直播工作室。
 - 做游戏直播：游戏插件依赖直播工作室提供的能力；同一个直播间只启用游戏模式的接收器，避免重复回复和语音。
+
+- 做离线 reaction 视频：搭配陪看工作室和直播插件公共组件，不需开启直播接收器。成片先人工审阅，发布仍由工作台负责。
 
 各插件的配置、安装方法和许可证见对应 README、LICENSE 与 NOTICE。大肥鱼的角色素材、游戏资源需要另行准备。
 
