@@ -2,8 +2,10 @@
  const q=s=>document.querySelector(s), make=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e};
  const groups=[
  ['浏览与作息',[
- ['autoRun','自动浏览','bool'],['autoRunsPerDay','每天最多几轮（0 为不限）','number',0,24],['autoGapMinutes','两轮间隔（分钟）','number',15,240],['peakValleyOnly','仅谷时运行','bool'],
+ ['autoRun','自动浏览','bool'],['autoRunsPerDay','每天最多几轮（0 为不限）','number',0,24],['autoGapMinutes','两轮间隔（分钟）','number',15,240],
  ['keywords','搜索关键词（每行一个）','text'],['perRoundMax','每轮最多挑几个视频','number',0,20],['perDayMax','每天最多挑几个视频','number',0,120],['minDurationMin','视频最短时长（分钟，0 不限）','number',0,600],['maxDurationMin','视频最长时长（分钟，0 不限）','number',0,600]]],
+ ['峰谷调度（北京时间）',[
+ ['peakValleyOnly','自动任务仅在谷时启动','bool'],['peakPeriods','峰时时段（每行 HH:MM-HH:MM，支持跨午夜）','text'],['peakWeekdays','峰时适用星期（1 为周一、7 为周日，逗号分隔）','text'],['peakOffDates','全天谷时例外日期（每行 YYYY-MM-DD，可填法定节假日）','text']]],
  ['评论与互动',[
  ['autoComment','允许普通评论','bool'],['circleMode','仅在 UP 主明确邀请时参与（与普通评论互斥）','bool'],['commentPerRound','每轮评论上限','number',0,20],['replyToComments','允许浏览轮回复楼中楼','bool'],['replyPerRound','每轮楼中楼回复上限','number',1,10]]],
  ['评论区守护',[
@@ -21,7 +23,9 @@
   if(!prefillDirty){q('#prefill-enabled').checked=current.commentPrefill.enabled;q('#prefill-text').value=current.commentPrefill.prefix;}
   q('#mentions-uids').value=current.externalMentions.uids.join('\n');
   const form=q('#settings-form');form.replaceChildren();
-  for(const [title,rows] of groups){const group=make('fieldset'),legend=make('legend',title);group.append(legend);for(const [key,label,type,min,max] of rows){if(!(key in current.config))continue;const row=make('label'),caption=make('span',label),input=make(type==='text'?'textarea':'input');input.name=key;if(type==='bool'){input.type='checkbox';input.checked=current.config[key]===true;row.className='check-row'}else{if(type==='number'){input.type='number';input.min=min;input.max=max;input.step=1;input.required=true}else{input.rows=2;input.maxLength=key==='keywords'?2000:key==='guardWhitelist'||key==='guardTone'?1000:key==='dutyModel'?200:key==='dutyProvider'?120:100}input.value=key==='keywords'?(current.config[key]||[]).join('\n'):(current.config[key]??'')}row.append(caption,input);group.append(row)}form.append(group)}
+  for(const [title,rows] of groups){const group=make('fieldset'),legend=make('legend',title);group.append(legend);for(const [key,label,type,min,max] of rows){if(!(key in current.config))continue;const row=make('label'),caption=make('span',label),input=make(type==='text'?'textarea':'input');input.name=key;if(type==='bool'){input.type='checkbox';input.checked=current.config[key]===true;row.className='check-row'}else{if(type==='number'){input.type='number';input.min=min;input.max=max;input.step=1;input.required=true}else{input.rows=2;input.maxLength=key.startsWith('peak')?5000:key==='keywords'?2000:key==='guardWhitelist'||key==='guardTone'?1000:key==='dutyModel'?200:key==='dutyProvider'?120:100}input.value=key==='keywords'?(current.config[key]||[]).join('\n'):(current.config[key]??'')}row.append(caption,input);group.append(row)}form.append(group)}
+  const hint=make('p','默认参考 DeepSeek：周一至周五 09:00–12:00、14:00–18:00 为峰时。法定节假日请填入例外日期（不会自动更新日历）。限制自动浏览、评论守护及工作台定时采集；已启动的轮次正常收尾，手动操作不受此限制。谷时恢复原调度，不补跑峰时次数。');form.append(hint);
+  if(current.schedule)form.append(make('p',current.schedule.reason));
   const save=make('button','查看修改并保存');save.type='submit';form.append(save);
   const s=current.status;q('#account-status').textContent=`${s.loggedIn?'已保存登录凭据（不等于已在线验证有效）':'尚未保存登录凭据'} · ${s.running?'正在浏览':s.finalizing?'正在收尾':'当前没有浏览轮运行'} · 今日浏览 ${s.pickedToday??'未知'} 个视频`;
   const p=current.policies['feiyu-policy.json'],t=current.policies['share-target.json'];q('#policy-status').textContent=`${p?`现有发送总闸：${p.enabled?'开启':'关闭'}，每天最多 ${p.dailyAttempts} 次发送尝试，间隔至少 ${p.minimumIntervalSeconds} 秒。`:'本地发送总闸信息读取失败，请先检查原服务。'} ${t?`选择性分享对象：${t.name}（UID ${t.uid}）。分享对象与值班章程绑定，本页仅展示。`:''} 点赞、收藏、私信保持现有配置，本页不修改。`;

@@ -1,3 +1,4 @@
+import { PEAK_DEFAULTS, validatePeakConfig, peakSchedule } from './lib/peak-schedule.mjs'
 import { GrowthBridge } from './lib/growth-bridge.mjs'
 import { readOnlyBilibili } from './lib/platform.mjs'
 import { appendReport } from './lib/report-append.mjs'
@@ -62,7 +63,7 @@ export const Config = !z ? undefined : z.object({
    *     autoRunsPerDay 每天最多跑几轮
    *     autoGapMinutes 两轮之间至少隔几分钟（默认 60 ⇒ 每小时最多 1 轮）
    *     peakValleyOnly 只在谷时时段内跑（可选）
-   *     noon / night   谷时段开关（仅 peakValleyOnly 时有意义）
+   *     peakPeriods / peakWeekdays / peakOffDates 配置北京时间峰时及例外日期
    *   ⚠️ 所有范围一律由 clampPatch 在读写两头钳，schema 里不写 .max() ——
    *     schema 校验不过会让整条插件不激活（老坑）。
    * ───────────────────────────────────────────────────────────── */
@@ -74,7 +75,10 @@ export const Config = !z ? undefined : z.object({
   autoGapMinutes: z.natural().default(60).extra('volatile', true),
   /** 只在谷时时段内自动跑（可选；关掉 = 24 小时均分） */
   peakValleyOnly: z.boolean().default(false).extra('volatile', true),
-  /** 谷时子开关：中午 / 夜间（仅 peakValleyOnly 开启时有意义） */
+  peakPeriods: z.string().default(PEAK_DEFAULTS.peakPeriods).extra('volatile', true),
+  peakWeekdays: z.string().default(PEAK_DEFAULTS.peakWeekdays).extra('volatile', true),
+  peakOffDates: z.string().default('').extra('volatile', true),
+  /** Legacy fields retained for stored configuration; peak policy replaces these windows. */
   noon: z.boolean().default(true).extra('volatile', true),
   night: z.boolean().default(true).extra('volatile', true),
   /** 每轮最多挑几条 */
@@ -360,6 +364,7 @@ const pondAccount = async () => {
      *   老配置里 perDay>0 ⇒ 视为「每天最多挑 perDay 条」
      *   老配置里 peakValley=true ⇒ 视为「自动开 + 只在谷时跑」
      * 新代码只写 perRoundMax / perDayMax / autoRun / peakValleyOnly。 */
+    ...PEAK_DEFAULTS,
     perDay: 5, peakValley: false,
     autoRun: false, autoRunsPerDay: 6, autoGapMinutes: 60, peakValleyOnly: false,
     perRoundMax: 3, perDayMax: 18, transcribePerDay: 10,
@@ -626,6 +631,7 @@ const pondAccount = async () => {
    *   才记进 sync-failed.json、才会出现在界面上（见上面两本账的注释）。
    */
   const persistCfg = async (patch) => {
+    if(Object.keys(PEAK_DEFAULTS).some(k=>k in patch)||'peakValleyOnly' in patch) validatePeakConfig({...cfg,...patch})
     const clean = clampPatch(patch)
     saveCfg(clean)
     const host = await saveCfgHost(clean)
@@ -1104,7 +1110,7 @@ const pondAccount = async () => {
         // ⭐ 设置页显式设过的键以宿主为准 ⇒ 必须跟着写一份，否则"改了没反应"（钳范围也在这里）
         host = (await persistCfg(args.patch)).host
       }
-      return { ok: true, config: cfg, windows: WINDOWS, home: stateDir, venvReady: venvReadyNow(), host }
+      return { ok: true, config: cfg, schedule: peakSchedule(cfg), windows: WINDOWS, home: stateDir, venvReady: venvReadyNow(), host }
     },
   })
 
@@ -2091,6 +2097,8 @@ const pondAccount = async () => {
    *    ⚠️ 校验器自己失败时不拦（宁可照老行为跑）。
    */
   const runDutyChecked = async (why) => {
+    refreshCfg()
+    if(why!=='manual'&&peakSchedule(cfg).blocked)return {started:false,reason:'peak-hours',error:peakSchedule(cfg).reason}
     if(dutyRun||dutyFinalizing)return {started:false,busy:true,error:'上一轮尚未完成'}
     if(character.db.prepare("SELECT id FROM operations WHERE kind LIKE 'round:%' AND state='uncertain' LIMIT 1").get())return {started:false,busy:true,error:'上次宿主中断，旧轮次结果未核实；先确认旧进程已退出，禁止自动重跑'}
     try {
@@ -2104,6 +2112,8 @@ const pondAccount = async () => {
     } catch (e) {
       log(`模型预检出错（不拦，照常跑）：${e?.message ?? e}`)
     }
+    refreshCfg()
+    if(why!=='manual'&&peakSchedule(cfg).blocked)return {started:false,reason:'peak-hours',error:peakSchedule(cfg).reason}
     return runDuty(why)
   }
   const runDutySafe = why => coordinator.reserve('dispatch:'+why, () => runDutyChecked(why))
@@ -2114,25 +2124,9 @@ const pondAccount = async () => {
    *    （`dsh: fatal uncaught exception`）。⇒ **定时器回调必须自己兜住所有异常**：
    *    插件再错也只该"这一轮没跑成"，绝不该杀宿主。
    */
-  /* ═══════════════════════════════════════════════════════════════════
-   * ⭐ 2026-10-20 自动运行重构
-   *
-   * 旧逻辑：peakValley 是总开关 ⇒ 关着就永不自动；开着又必须落在峰谷窗口内。
-   *   那是「只能走 DeepSeek 官方 API、峰谷差价 4 倍」时代的产物。
-   *
-   * 新逻辑（四级闸门，逐条 return）：
-   *   ① autoRun 关            ⇒ 不跑
-   *   ② 今天挑满 perDayMax    ⇒ 不跑（配额是全天账）
-   *   ③ 今天跑满 autoRunsPerDay ⇒ 不跑
-   *   ④ 距上一轮不足 autoGapMinutes ⇒ 不跑（默认 60 分钟 ⇒ 每小时最多 1 轮）
-   *   ⑤ peakValleyOnly 开着时，再看是不是在谷时窗口内
-   *        · 中午 12:00–14:00 **一轮只排一次**（2 小时默认跑不完两轮）
-   *        · 夜间 18:00–09:00 照常按间隔排
-   *
-   * ⚠️ 手动跑一轮不经过这里，也不写 windows 标记 ⇒
-   *    手动那一轮不占自动配额（用户想随时看一眼就看不该扣自动额度）。
-   * ⚠️ 定时器回调里绝不让异常外冒 —— 未捕获异常会杀掉整个宿主（2026-10-14 事故）。
-   * ═══════════════════════════════════════════════════════════════════ */
+  // Automatic browsing keeps its original quotas and spacing. The unified
+  // Beijing peak policy is checked before every scheduled phase and dispatch.
+  // Skipped peak ticks create no new queued work and do not consume quotas.
   const tick = async () => {
     try {
       refreshCfg()
@@ -2159,55 +2153,9 @@ const pondAccount = async () => {
       const lastAt = st.lastRunAt ? Date.parse(st.lastRunAt) : 0
       if (lastAt && (now.getTime() - lastAt) < gapMs) return
 
-      // ⑤ 峰谷优先（可选）
-      let why = 'auto'
-      if (cfg.peakValleyOnly) {
-        const inNoon = cfg.noon && inWindow(now, WINDOWS.noon)
-        const inNight = cfg.night && inWindow(now, WINDOWS.night)
-        if (!inNoon && !inNight) return
-        why = inNoon ? 'noon' : 'night'
-        /* ⭐ 2026-10-20：给中午留配额。
-         *   夜间窗口 18:00–09:00 有 15 小时、间隔 60 分钟 ⇒ 单夜间就能跑 15 轮，
-         *   autoRunsPerDay=6 的话 18–23 点就跑满了，中午那轮永远轮不到 ✗。
-         *   所以：夜间最后一轮要扣着 —— 只要「中午还没跑」且「今天还能跑」，就留 1 次给它。
-         *   （中午已经跑过、或中午窗口关了，就不留。） */
-        if (inNight && cfg.noon) {
-          const noonKey = `${today}:noon`
-          const noonPending = !st.windows?.[noonKey]
-          const runsMaxNow = Number(cfg.autoRunsPerDay) || 0
-          const usedNow = roundsToday(now)
-          if (noonPending && runsMaxNow > 0 && usedNow >= runsMaxNow - 1) {
-            // 只剩最后一轮额度，且现在还在夜间 ⇒ 留给中午
-            // 但如果现在已经过了中午窗口（14:00 之后）就不用留了，否则会白等一整天
-            const curMin = now.getHours() * 60 + now.getMinutes()
-            const noonEnd = 14 * 60
-            if (curMin >= noonEnd) {
-              // 已经过了中午窗口 ⇒ 这个"保底"作废，照常跑
-            } else {
-              return
-            }
-          }
-        }
-        // 中午那个窗口：**整个 12–14 点只排一轮**（2 小时默认跑不完两轮）
-        if (inNoon) {
-          const noonKey = `${today}:noon`
-          if (st.windows?.[noonKey]) return
-          const next = { ...(st.windows || {}), [noonKey]: true }
-          bumpState({ windows: next, count: roundsToday(now) + 1, lastRunAt: now.toISOString(), lastWhy: 'noon' })
-          await Promise.resolve(runDutySafe('window:noon')).then((r) => {
-            if (r && r.started === false) {
-              try {
-                const st2 = readJson(dutyStateFile, {})
-                const w = { ...(st2.windows || {}) }
-                delete w[noonKey]
-                writeJson(dutyStateFile, { ...st2, windows: w, count: Math.max(0, roundsToday(now)) })
-                log(`中午那一轮没跑成，已退回窗口标记（下一跳重试）`)
-              } catch (e2) { log(`退窗口标记失败（不影响）：${e2?.message ?? e2}`) }
-            }
-          }).catch((e) => log(`定时器那一轮出错（已兜住）：${e?.message ?? e}`))
-          return
-        }
-      }
+      // Unified policy also gates guard/collection; no special noon quota.
+      const why = 'auto'
+      if (peakSchedule(cfg,now).blocked) return
 
       // 开跑
       bumpState({ count: roundsToday(now) + 1, lastRunAt: now.toISOString(), lastWhy: why })
@@ -2447,7 +2395,7 @@ const pondAccount = async () => {
    */
   const guardScan = async () => {
     const g = guardCfg()
-    if (!g.on) return { ok: false, skipped: 'off' }
+    if (!g.on || peakSchedule(cfg).blocked) return { ok: false, skipped: 'off' }
     if (!hasCredential()) return { ok: false, skipped: 'no-cred' }
     /* ⭐ 白名单只在「不开大号视频全回」时才是硬门槛（2026-10-22 用户澄清：
      *    大号视频下不用 @ 也回，所以那条路不需要白名单） */
@@ -2734,7 +2682,7 @@ const pondAccount = async () => {
   }
 
   const growthBridge = new GrowthBridge(join(stateDir,'..'),character,readOnlyBilibili(call))
-  coordinator.start({sync:async()=>{syncExperiences();if(!dutyRun&&!dutyFinalizing)await coordinator.reserve('growth-collection',()=>growthBridge.tick())},guard:guardTick,browse:tick})
+  coordinator.start({allowed:()=>{refreshCfg();return !peakSchedule(cfg).blocked},sync:async()=>{syncExperiences();if(!dutyRun&&!dutyFinalizing)await coordinator.reserve('growth-collection',()=>growthBridge.tick())},guard:guardTick,browse:tick})
 
 
   /* ─────────────── HTTP（设置页用） ─────────────── */
@@ -3270,7 +3218,7 @@ const pondAccount = async () => {
     return {
       ok: true,
       home: stateDir,
-      config: cfg,
+      config: cfg, schedule: peakSchedule(cfg),
       windows: WINDOWS,
       today,
       ranToday: st.day === today ? Number(st.count || 0) : 0,   // 今天跑了几轮
@@ -3616,7 +3564,7 @@ const pondAccount = async () => {
       try { if (existsSync(join(stateDir, 'say.txt'))) say = readFileSync(join(stateDir, 'say.txt'), 'utf8').trim() } catch { say = '' }
       return sendJson(res, 200, {
         ok: true,
-        config: cfg,
+        config: cfg, schedule: peakSchedule(cfg),
         account: await pondAccount(),
         usage: readUsageToday(),
         stats: {
@@ -3636,7 +3584,7 @@ const pondAccount = async () => {
       })
     }
     if (req.method === 'GET' && path === '/api/bili-pond/config') {
-      return sendJson(res, 200, { ok: true, config: cfg, windows: WINDOWS, home: stateDir })
+      return sendJson(res, 200, { ok: true, config: cfg, schedule: peakSchedule(cfg), windows: WINDOWS, home: stateDir })
     }
 
     if (req.method === 'POST' && path === '/api/bili-pond/config') {
@@ -3645,7 +3593,7 @@ const pondAccount = async () => {
       for (const k of ['perDay', 'peakValley', 'noon', 'night', 'autoComment', 'circleMode', 'transcribe', 'asrModel',
         'commentPerRound', 'mentionName', 'mentionUid', 'dmOn', 'dmMode', 'dmUid',
         // 2026-10-20 自动运行 / 配额 / 时长 / 字幕优先 / 熔断
-        'autoRun', 'autoRunsPerDay', 'autoGapMinutes', 'peakValleyOnly',
+        'autoRun', 'autoRunsPerDay', 'autoGapMinutes', 'peakValleyOnly', 'peakPeriods', 'peakWeekdays', 'peakOffDates',
         'perRoundMax', 'perDayMax', 'transcribePerDay',
         'minDurationMin', 'maxDurationMin', 'preferSubtitle', 'subtitleProbeMax',
         'keywords', 'pythonPath', 'dshBin', 'headlessProfile', 'dutyProvider', 'dutyModel', 'workspace', 'reportLevel', 'replyToComments', 'replyPerRound',
@@ -3660,9 +3608,11 @@ const pondAccount = async () => {
       if ('dmOn' in patch) patch.dmOn = Boolean(patch.dmOn)
       if ('dmMode' in patch) patch.dmMode = ['off', 'only', 'both'].includes(String(patch.dmMode)) ? String(patch.dmMode) : 'off'
       if ('dmUid' in patch) patch.dmUid = Math.max(0, Math.min(Number(patch.dmUid) || 0, Number.MAX_SAFE_INTEGER))
-      const { clean, host } = await persistCfg(patch)
+      let saved
+      try { saved = await persistCfg(patch) } catch(e) { return sendJson(res,400,{ok:false,error:e.message}) }
+      const { clean, host } = saved
       log(`设置已更新：${JSON.stringify(clean)}（DSH 那边${host.ok ? '已同步' : '没写成：' + host.error}）`)
-      return sendJson(res, 200, { ok: true, config: cfg, host })
+      return sendJson(res, 200, { ok: true, config: cfg, schedule: peakSchedule(cfg), host })
     }
 
     if (req.method === 'POST' && path === '/api/bili-pond/run') {

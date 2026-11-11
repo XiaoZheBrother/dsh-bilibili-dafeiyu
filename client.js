@@ -1220,7 +1220,7 @@ window.__ModuleLoader__.load({
       const envTone = st.venvReady ? 'ok' : (st.installing ? 'warn' : 'err')
       const loginTxt = st.loggedIn ? '已登录' : '未登录'
       const loginToneV = st.loggedIn ? 'ok' : 'warn'
-      const inPvWindow = Boolean(st.windows?.noon?.opening || st.windows?.night?.opening)
+      const inPvWindow = st.schedule ? !st.schedule.blocked : false
       const planTxt = st.installing ? '安装中'
         : (!sw('autoRun')
           ? '仅手动'
@@ -1542,18 +1542,12 @@ window.__ModuleLoader__.load({
         h(Card, { title: '峰谷时段（可选）' },
           h(SwitchRow, {
             label: '只在谷时跑',
-            desc: '开启后自动轮只排在谷时窗口内。用免费模型时通常不需要',
+            desc: '限制自动浏览、守护和定时采集；手动操作不受限，已启动轮次正常收尾',
             on: Boolean(pvOnly),
             onChange: (v) => { setPvOnly(v); patch({ peakValleyOnly: v }, '只在谷时跑') },
           }),
-          Boolean(pvOnly) ? h('div', { 'data-bd-sub': '' },
-            ...['noon', 'night'].map((k) => h(SwitchRow, {
-              key: k,
-              label: win[k].label + (st.windows?.[k]?.opening ? '（当前在窗口内）' : ''),
-              desc: `${win[k].start} – ${win[k].end}` + (k === 'noon' ? '（这个窗口只排 1 轮）' : ''),
-              on: sw(k),
-              onChange: (v) => patch({ [k]: v }, win[k].label),
-            }))) : null),
+          h('p', null, st.schedule?.reason || '请在大肥鱼工作台配置峰时'),
+          h('a', { href: '/dafeiyu-studio/' }, '前往工作台 → 运行设置 → 峰谷调度')),
 
         h(Divider),
 

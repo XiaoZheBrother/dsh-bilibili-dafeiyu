@@ -7,6 +7,7 @@ import secrets
 import threading
 import time
 import urllib.request
+import urllib.error
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
@@ -17,7 +18,7 @@ NUMBERS = {'autoRunsPerDay': (0,24), 'autoGapMinutes': (15,240), 'perRoundMax': 
  'perDayMax': (0,120), 'transcribePerDay': (0,50), 'commentPerRound': (0,20), 'replyPerRound': (1,10),
  'guardDailyCap': (0,500), 'guardScope': (1,10), 'guardPerRound': (1,20), 'guardPollMinutes': (1,120),
  'minDurationMin': (0,600), 'maxDurationMin': (0,600), 'subtitleProbeMax': (1,10)}
-TEXTS = {'guardWhitelist':1000, 'guardTone':1000, 'dutyProvider':120, 'dutyModel':200, 'asrModel':100}
+TEXTS = {'guardWhitelist':1000, 'guardTone':1000, 'dutyProvider':120, 'dutyModel':200, 'asrModel':100, 'peakPeriods':5000, 'peakWeekdays':100, 'peakOffDates':5000}
 FIELDS = set(BOOLS) | set(NUMBERS) | set(TEXTS) | {'keywords'}
 
 class PondError(Exception):
@@ -45,6 +46,12 @@ class Pond:
                 value=json.loads(raw)
                 if not isinstance(value,dict) or value.get('ok') is False:raise ValueError()
                 return value
+        except urllib.error.HTTPError as e:
+            if e.code==400:
+                try:message=json.loads(e.read(10000)).get('error','设置格式不正确')
+                except (ValueError,TypeError):message='设置格式不正确'
+                raise PondError(400,str(message)) from e
+            raise PondError(502,'运行核心拒绝请求，请重新读取状态。') from e
         except Exception as e:raise PondError(502,'原鱼塘服务未响应或拒绝请求；操作结果可能未确认，请重新读取状态，不要连续重试。') from e
 
     @staticmethod
@@ -118,7 +125,7 @@ class Pond:
             except (OSError,ValueError,TypeError):policies[filename]=None
         mentions=self.external_mentions()
         return {'commentPrefill':self.prefill(),'externalMentions':{'uids':list(mentions),'revision':self.revision(mentions)},'config':cfg,'revision':self.revision(cfg),'csrf':self.token,'policies':policies,
-                'status':{k:raw.get(k) for k in ('loggedIn','venvReady','running','finalizing','roundsToday','pickedToday','asrUsedToday','lastRunAt','version')},
+                'schedule':raw.get('schedule'), 'status':{k:raw.get(k) for k in ('loggedIn','venvReady','running','finalizing','roundsToday','pickedToday','asrUsedToday','lastRunAt','version')},
                 'notSynced':[k for k in raw.get('notSynced',[]) if k in FIELDS]}
 
     def save(self,body):
