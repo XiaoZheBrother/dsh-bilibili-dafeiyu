@@ -2395,7 +2395,7 @@ const pondAccount = async () => {
    */
   const guardScan = async () => {
     const g = guardCfg()
-    if (!g.on || peakSchedule(cfg).blocked) return { ok: false, skipped: 'off' }
+    if (!g.on) return { ok: false, skipped: 'off' }
     if (!hasCredential()) return { ok: false, skipped: 'no-cred' }
     /* ⭐ 白名单只在「不开大号视频全回」时才是硬门槛（2026-10-22 用户澄清：
      *    大号视频下不用 @ 也回，所以那条路不需要白名单） */
@@ -2662,7 +2662,7 @@ const pondAccount = async () => {
     try {
       refreshCfg()
       const g = guardCfg()
-      if (!g.on) return
+      if (!g.on || peakSchedule(cfg).blocked) return
       if (Date.now() - guardLastAt < g.pollMs) return     // 没到点
       guardLastAt = Date.now()
       if (dutyRun || dutyFinalizing) { log('守护：上一轮还在跑，这次先不扫'); return }

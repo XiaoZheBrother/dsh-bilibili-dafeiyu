@@ -21,6 +21,10 @@ try {
  assert.equal((await get()).config.peakPeriods,before.config.peakPeriods)
  await put({peakValleyOnly:false});assert.equal((await get()).schedule.blocked,false)
  await put({peakValleyOnly:true,peakPeriods:'09:00-12:00\n14:00-18:00',peakWeekdays:'1,2,3,4,5',peakOffDates:''})
+ await put({guardOn:true,peakValleyOnly:true,peakPeriods:'00:00-24:00',peakWeekdays:'1,2,3,4,5,6,7',peakOffDates:''})
+ assert.equal((await get()).schedule.blocked,true)
+ const manual=await (await fetch(url+'guard/scan',{method:'POST'})).json()
+ assert.equal(manual.skipped,'no-cred','manual scan must reach credential check even during peak hours')
  console.log(JSON.stringify({passed:true,home,origin:url}))
 }catch(e){console.error(e);process.exitCode=1}
 if(!process.argv.includes('--serve')||process.exitCode){server.close();for(const f of cleanup.reverse())await f()}
