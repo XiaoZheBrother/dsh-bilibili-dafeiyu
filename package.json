@@ -9,7 +9,12 @@
     "bilibili",
     "bili",
     "radar",
-    "daily-digest"
+    "daily-digest",
+    "agent",
+    "ai-agent",
+    "danmaku",
+    "agent-memory",
+    "content-creation"
   ],
   "license": "MIT",
   "type": "module",
@@ -41,7 +46,9 @@
     "vendor/bilibili-mcp/*.py",
     "vendor/bilibili-mcp/*.md",
     "vendor/bilibili-mcp/*.txt",
-    "vendor/bilibili-mcp/LICENSE"
+    "vendor/bilibili-mcp/LICENSE",
+    "docs/agent-guide.md",
+    "llms.txt"
   ],
   "engines": {
     "dsh": ">=0.1.7-rc.1",
