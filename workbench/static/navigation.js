@@ -1,6 +1,6 @@
 (() => {
  const q=s=>document.querySelector(s);
- const routes={home:{name:'首页',tabs:[]},interact:{name:'互动',tabs:[['interactions','评论与弹幕'],['relationships','认识的朋友']]},create:{name:'创作',tabs:[['creations','草稿与投稿'],['publications','已发布作品']]},grow:{name:'成长',tabs:[['interests','当前关注'],['artifacts','成长手记'],['memories','记忆'],['experiences','原始经历']]},live:{name:'直播间',tabs:[]},settings:{name:'设置',tabs:[['preferences','日常设置'],['operations','运行诊断']]}};
+ const routes={home:{name:'首页',tabs:[]},interact:{name:'互动',tabs:[['interactions','评论与弹幕'],['relationships','认识的朋友']]},create:{name:'创作',tabs:[['creations','草稿与投稿'],['publications','已发布作品']]},grow:{name:'成长',tabs:[['interests','当前关注'],['artifacts','成长手记'],['memories','记忆'],['experiences','原始经历']]},live:{name:'直播间',tabs:[]},settings:{name:'设置',tabs:[['account','账号'],['automation','自动任务'],['interaction','互动'],['expression','表达'],['advanced','高级'],['operations','运行诊断']]}};
  let page='home',selected='';
  const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(cls)e.className=cls;return e};
  function go(p,t){const hash='#/'+p+(t?'/'+t:'');if(location.hash===hash)route();else location.hash=hash}
@@ -20,12 +20,13 @@
   for(const e of document.querySelectorAll('[data-page]')){const active=e.dataset.page===page;e.classList.toggle('active',active);if(active)e.setAttribute('aria-current','page');else e.removeAttribute('aria-current')}
   for(const id of ['home-page','records-page','settings-page','live-page'])q('#'+id).hidden=true;
   q('#breadcrumb').textContent=r.name;const nav=q('#section-nav');nav.replaceChildren();nav.hidden=!r.tabs.length;
-  for(const [key,label] of r.tabs){const b=jump(label,page,key,'section-tab');b.setAttribute('aria-current',key===selected?'page':'false');nav.append(b)}
+  for(const [key,label] of r.tabs){const b=jump(label,page,key,'section-tab');b.setAttribute('aria-current',key===selected?'page':'false');if(page==='settings')b.dataset.settingsTab=key;nav.append(b)}
   if(page==='home'){q('#home-page').hidden=false;home()}
   else if(page==='live'){q('#live-page').hidden=false;window.feiyuPluginsOpen?.()}
-  else if(page==='settings'&&selected==='preferences'){q('#settings-page').hidden=false;window.feiyuSettingsOpen?.()}
+  else if(page==='settings'&&selected!=='operations'){q('#settings-page').hidden=false;window.feiyuSettingsOpen?.(selected)}
   else{q('#records-page').hidden=false;window.feiyuRecords.show(selected);q('#records-page .page-subtitle').textContent=({interact:'每次说过的话，都有来处。',create:'从一个念头，到留在世界里的作品。',grow:'先看看她的想法，再翻翻背后的经历。',settings:'查看已有运行记录，不会重新启动任务。'})[page]}
   if(refocus)nav.querySelector('[aria-current=page]')?.focus({preventScroll:true});
+  window.feiyuSettingsBadges?.();
   window.scrollTo({top:0,behavior:'instant'});
   window.dispatchEvent(new CustomEvent('feiyu:navigation',{detail:{page,tab:selected}}));
  }

@@ -2,7 +2,9 @@
   const q = selector => document.querySelector(selector);
   const upload = q('#upload-form'), config = q('#danmaku-form');
   const message = q('#media-message'), send = q('#media-send');
-  let preview = null, sending = false;
+  let preview = null, sending = false, configDirty=false, configLoaded=false;
+  window.feiyuMediaDirty=()=>configDirty;
+  config.addEventListener('input',()=>{configDirty=true;window.feiyuSettingsBadges?.()});
 
   async function request(path, body) {
     const opts = {cache:'no-store'};
@@ -16,11 +18,13 @@
     return value;
   }
 
-  async function load() {
+  async function load(discard=false) {
     const panel = await request('');
-    config.elements.enabled.checked = panel.settings.enabled;
-    config.elements.cap.value = panel.settings.cap;
+    if(discard)configDirty=false;
+    if(!configDirty&&(!configLoaded||discard)){configLoaded=true;config.elements.enabled.checked = panel.settings.enabled;
+    config.elements.cap.value = panel.settings.cap;}
     config.querySelector('button').disabled = false;
+    window.feiyuSettingsBadges?.();
     q('#media-folder').textContent = '请把成片和封面放入 ' + panel.inbox;
     const history = q('#media-history');
     history.replaceChildren();
@@ -42,12 +46,16 @@
     }
   }
 
+  window.feiyuMediaReload=()=>load(true);
   config.onsubmit = async e => {
     e.preventDefault();
+    if(window.feiyuSettingsBusy?.())return;
+    window.feiyuSettingsSetBusy?.(true);config.querySelector('fieldset').disabled=true;
     try {
       await request('/config',{enabled:config.elements.enabled.checked,cap:Number(config.elements.cap.value)});
-      config.querySelector('output').textContent = '已保存';
+      configDirty=false;window.feiyuSettingsBadges?.();config.querySelector('output').textContent = '已保存';
     } catch (err) {config.querySelector('output').textContent = err.message;}
+    finally {window.feiyuSettingsSetBusy?.(false);config.querySelector('fieldset').disabled=false;}
   };
   function invalidate() {preview = null; send.disabled = true;}
   upload.oninput = invalidate;
@@ -78,5 +86,5 @@
     catch (err) {message.textContent = err.message;}
     finally {sending = false; upload.querySelector('fieldset').disabled = false; load().catch(()=>{});}
   };
-  window.addEventListener('feiyu:navigation',e=>{if(e.detail.page==='settings'||e.detail.tab==='creations')load().catch(error=>{message.textContent=error.message;config.querySelector('output').textContent=error.message;})});
+  window.addEventListener('feiyu:navigation',e=>{if((e.detail.page==='settings'&&e.detail.tab==='interaction')||e.detail.tab==='creations')load().catch(error=>{message.textContent=error.message;config.querySelector('output').textContent=error.message;})});
 })();

@@ -14,48 +14,57 @@
  ['dutyProvider','模型线路 ID（留空跟随宿主）','text'],['dutyModel','模型名称（留空跟随默认）','text'],['preferSubtitle','字幕优先','bool'],['subtitleProbeMax','每轮最多查几条字幕','number',1,10],['transcribe','允许本地转写','bool'],['transcribePerDay','每日最多转写次数','number',0,50],['asrModel','本地转写模型','text']]]
  ];
  const fields=groups.flatMap(g=>g[1]),labels=Object.fromEntries(fields.map(f=>[f[0],f[1]]));
- let prefillDirty=false;
+ let prefillDirty=false,mentionsDirty=false,active='account';
+ const owners=['automation','automation','interaction','interaction','advanced'];
+ const ownerOf=key=>key==='guardTone'?'expression':owners[groups.findIndex(g=>g[1].some(f=>f[0]===key))];
+ const inputValue=(input,key,type)=>key==='keywords'?input.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean):type==='bool'?input.checked:type==='number'?Number(input.value):input.value;
+ function changes(tab){const patch={};if(!current)return patch;for(const [key,,type] of fields){const input=q('#settings-form').elements.namedItem(key);if(input&&(!tab||ownerOf(key)===tab)){const value=inputValue(input,key,type);if(JSON.stringify(value)!==JSON.stringify(current.config[key]))patch[key]=value}}return patch}
+ function badges(){dirty=Object.keys(changes()).length>0;document.querySelectorAll('[data-settings-tab]').forEach(b=>{const tab=b.dataset.settingsTab;const changed=Object.keys(changes(tab)).length>0||(tab==='expression'&&prefillDirty)||(tab==='interaction'&&(mentionsDirty||window.feiyuMediaDirty?.()));b.classList.toggle('has-draft',changed);b.dataset.dirty=String(changed);b.title=changed?'有未保存修改':''})}
+ window.feiyuSettingsBadges=badges;
+ function show(tab=active){active=tab;for(const [id,owner] of [['login-start','account'],['account-status','account'],['policy-status','interaction'],['danmaku-form','interaction'],['mentions-form','interaction'],['prefill-form','expression']])q('#'+id).hidden=owner!==tab;document.querySelectorAll('#settings-form [data-owner]').forEach(e=>{e.hidden=e.dataset.owner!==tab;if(e.tagName==='FIELDSET')e.disabled=loading||e.hidden});q('#settings-form').hidden=!['automation','interaction','expression','advanced'].includes(tab);badges()}
  let current=null,dirty=false,loading=false,pending=null,uncertain=false;
- function setBusy(value){loading=value;q('#settings-form').querySelectorAll('fieldset,button').forEach(e=>e.disabled=value);q('#settings-reload').disabled=value;q('#login-start').disabled=value;}
+ function setBusy(value){loading=value;q('#settings-page').querySelectorAll('fieldset,#settings-form button').forEach(e=>e.disabled=value||(e.tagName==='FIELDSET'&&e.hidden));q('#settings-reload').disabled=value;q('#login-start').disabled=value;}
+ window.feiyuSettingsBusy=()=>loading;window.feiyuSettingsSetBusy=setBusy;
  const message=t=>q('#settings-message').textContent=t;
  async function request(path,body){const options={cache:'no-store'};if(body!==undefined){options.method='POST';options.headers={'Content-Type':'application/json','X-Studio-CSRF':current?.csrf||''};options.body=JSON.stringify(body)}const r=await fetch(path,options);const result=await r.json();if(!r.ok)throw new Error(result.error||'服务暂不可用');return result}
  function draw(){
   if(!prefillDirty){q('#prefill-enabled').checked=current.commentPrefill.enabled;q('#prefill-text').value=current.commentPrefill.prefix;}
-  q('#mentions-uids').value=current.externalMentions.uids.join('\n');
+  if(!mentionsDirty)q('#mentions-uids').value=current.externalMentions.uids.join('\n');
   const form=q('#settings-form');form.replaceChildren();
-  for(const [title,rows] of groups){const group=make('fieldset'),legend=make('legend',title);group.append(legend);for(const [key,label,type,min,max] of rows){if(!(key in current.config))continue;const row=make('label'),caption=make('span',label),input=make(type==='text'?'textarea':'input');input.name=key;if(type==='bool'){input.type='checkbox';input.checked=current.config[key]===true;row.className='check-row'}else{if(type==='number'){input.type='number';input.min=min;input.max=max;input.step=1;input.required=true}else{input.rows=2;input.maxLength=key.startsWith('peak')?5000:key==='keywords'?2000:key==='guardWhitelist'||key==='guardTone'?1000:key==='dutyModel'?200:key==='dutyProvider'?120:100}input.value=key==='keywords'?(current.config[key]||[]).join('\n'):(current.config[key]??'')}row.append(caption,input);group.append(row)}form.append(group)}
-  const hint=make('p','默认参考 DeepSeek：周一至周五 09:00–12:00、14:00–18:00 为峰时。法定节假日请填入例外日期（不会自动更新日历）。限制自动浏览、评论守护及工作台定时采集；已启动的轮次正常收尾，手动操作不受此限制。谷时恢复原调度，不补跑峰时次数。');form.append(hint);
-  if(current.schedule)form.append(make('p',current.schedule.reason));
-  const save=make('button','查看修改并保存');save.type='submit';form.append(save);
+  for(const [title,rows] of groups){const group=make('fieldset'),legend=make('legend',title);group.dataset.owner=owners[groups.findIndex(g=>g[0]===title)];group.append(legend);for(const [key,label,type,min,max] of rows){if(!(key in current.config))continue;const row=make('label'),caption=make('span',label),input=make(type==='text'?'textarea':'input');input.name=key;if(type==='bool'){input.type='checkbox';input.checked=current.config[key]===true;row.className='check-row'}else{if(type==='number'){input.type='number';input.min=min;input.max=max;input.step=1;input.required=true}else{input.rows=2;input.maxLength=key.startsWith('peak')?5000:key==='keywords'?2000:key==='guardWhitelist'||key==='guardTone'?1000:key==='dutyModel'?200:key==='dutyProvider'?120:100}input.value=key==='keywords'?(current.config[key]||[]).join('\n'):(current.config[key]??'')}row.append(caption,input);if(key==='guardTone'){const expression=make('fieldset');expression.dataset.owner='expression';expression.append(make('legend','表达补充'),row);form.append(expression)}else group.append(row)}form.append(group)}
+  const hint=make('p','默认参考 DeepSeek：周一至周五 09:00–12:00、14:00–18:00 为峰时。法定节假日请填入例外日期（不会自动更新日历）。限制自动浏览、评论守护及工作台定时采集；已启动的轮次正常收尾，手动操作不受此限制。谷时恢复原调度，不补跑峰时次数。');hint.dataset.owner='automation';form.append(hint);
+  if(current.schedule){const reason=make('p',current.schedule.reason);reason.dataset.owner='automation';reason.id='schedule-reason';form.append(reason)}
+  const save=make('button','查看修改并保存');save.type='submit';save.textContent='查看本页修改并保存';form.append(save);
   const s=current.status;q('#account-status').textContent=`${s.loggedIn?'已保存登录凭据（不等于已在线验证有效）':'尚未保存登录凭据'} · ${s.running?'正在浏览':s.finalizing?'正在收尾':'当前没有浏览轮运行'} · 今日浏览 ${s.pickedToday??'未知'} 个视频`;
   const p=current.policies['feiyu-policy.json'],t=current.policies['share-target.json'];q('#policy-status').textContent=`${p?`现有发送总闸：${p.enabled?'开启':'关闭'}，每天最多 ${p.dailyAttempts} 次发送尝试，间隔至少 ${p.minimumIntervalSeconds} 秒。`:'本地发送总闸信息读取失败，请先检查原服务。'} ${t?`选择性分享对象：${t.name}（UID ${t.uid}）。分享对象与值班章程绑定，本页仅展示。`:''} 点赞、收藏、私信保持现有配置，本页不修改。`;
  }
- async function load(){if(loading)return;if((dirty||prefillDirty)&&!window.confirm('重新读取会丢弃未保存的修改，继续吗？'))return;setBusy(true);message('正在读取现有鱼塘设置…');try{current=await request('/api/settings');dirty=false;prefillDirty=false;uncertain=false;draw();message(current.notSynced.length?'已读取。部分原鱼塘配置未同步到 DSH，请在原工作台检查。':'已读取当前生效设置。')}catch(e){message(e.message)}finally{setBusy(false)}}
- window.feiyuSettingsOpen=()=>{if(!current)load()};
- q('#prefill-form').addEventListener('input',()=>{prefillDirty=true});
+ async function load(){if(loading)return;if((dirty||prefillDirty||mentionsDirty||window.feiyuMediaDirty?.())&&!window.confirm('重新读取会丢弃未保存的修改，继续吗？'))return;setBusy(true);message('正在读取现有鱼塘设置…');try{current=await request('/api/settings');dirty=false;prefillDirty=false;mentionsDirty=false;uncertain=false;draw();show();await window.feiyuMediaReload?.();message(current.notSynced.length?'已读取。部分原鱼塘配置未同步到 DSH，请在原工作台检查。':'已读取当前生效设置。')}catch(e){message(e.message)}finally{setBusy(false)}}
+ window.feiyuSettingsOpen=tab=>{show(tab);if(!current)load()};
+ q('#prefill-form').addEventListener('input',()=>{prefillDirty=true;badges()});
  q('#prefill-form').onsubmit=async e=>{
   e.preventDefault();if(!current||loading)return;
-  const form=e.currentTarget,fieldset=form.querySelector('fieldset');fieldset.disabled=true;
+  const form=e.currentTarget,fieldset=form.querySelector('fieldset');setBusy(true);
   try{
    current.commentPrefill=await request('/api/comment-prefill',{revision:current.commentPrefill.revision,enabled:q('#prefill-enabled').checked,prefix:q('#prefill-text').value});
-   prefillDirty=false;message(current.commentPrefill.enabled?'推理前缀已开启，下一次表达使用新设置。':'推理前缀已关闭，填充词已保留。');
-  }catch(error){message(error.message)}finally{fieldset.disabled=false}
+   prefillDirty=false;badges();message(current.commentPrefill.enabled?'推理前缀已开启，下一次表达使用新设置。':'推理前缀已关闭，填充词已保留。');
+  }catch(error){message(error.message)}finally{setBusy(false)}
  };
+ q('#mentions-form').addEventListener('input',()=>{mentionsDirty=true;badges()});
  q('#mentions-form').onsubmit=async e=>{
   e.preventDefault();if(!current||loading)return;
-  const button=q('#mentions-save');button.disabled=true;
+  const button=q('#mentions-save');button.disabled=true;setBusy(true);
   try{
    const uids=q('#mentions-uids').value.trim().split(/[\s,，、]+/).filter(Boolean);
    current.externalMentions=await request('/api/external-mentions',{revision:current.externalMentions.revision,uids});
-   q('#mentions-uids').value=current.externalMentions.uids.join('\n');message('邀请名单已保存。');
-  }catch(error){message(error.message)}finally{button.disabled=false}
+   if(!mentionsDirty)q('#mentions-uids').value=current.externalMentions.uids.join('\n');mentionsDirty=false;badges();message('邀请名单已保存。');
+  }catch(error){message(error.message)}finally{button.disabled=false;setBusy(false)}
  };
- q('#settings-reload').onclick=load;q('#settings-form').addEventListener('input',()=>{dirty=true});
- q('#settings-form').onsubmit=e=>{e.preventDefault();if(loading||!current)return;if(uncertain){message('上次保存结果未确认，请先重新读取，避免重复提交。');return}const patch={};for(const [key,,type] of fields){const input=q('#settings-form').elements.namedItem(key);if(!input)continue;const v=key==='keywords'?input.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean):type==='bool'?input.checked:type==='number'?Number(input.value):input.value;if(JSON.stringify(v)!==JSON.stringify(current.config[key]))patch[key]=v}if(!Object.keys(patch).length){message('没有需要保存的修改。');return}pending=patch;q('#settings-diff').textContent=Object.entries(patch).map(([k,v])=>`${labels[k]}：${String(current.config[k])} → ${String(v)}`).join('\n');q('#settings-confirm').showModal()};
+ q('#settings-reload').onclick=load;q('#settings-form').addEventListener('input',()=>{badges()});
+ q('#settings-form').onsubmit=e=>{e.preventDefault();if(loading||!current)return;if(uncertain){message('上次保存结果未确认，请先重新读取，避免重复提交。');return}const patch=changes(active);if(!Object.keys(patch).length){message('没有需要保存的修改。');return}pending=patch;q('#settings-diff').textContent=Object.entries(patch).map(([k,v])=>`${labels[k]}：${String(current.config[k])} → ${String(v)}`).join('\n');q('#settings-confirm').showModal()};
  q('#settings-cancel').onclick=()=>{if(!loading)q('#settings-confirm').close()};q('#settings-confirm').addEventListener('cancel',e=>{if(loading)e.preventDefault()});
- q('#settings-apply').onclick=async()=>{if(loading)return;setBusy(true);q('#settings-apply').disabled=true;message('正在保存并回读…');try{current=await request('/api/settings',{revision:current.revision,patch:pending});dirty=false;draw();message(current.hostSynced?'已保存，原鱼塘与 DSH 同步完成。':'已保存并回读；原鱼塘已生效，DSH 同步情况请在原工作台确认。')}catch(e){uncertain=true;message(e.message+' 当前草稿保留。')}finally{q('#settings-confirm').close();q('#settings-apply').disabled=false;setBusy(false)}};
+ q('#settings-apply').onclick=async()=>{if(loading)return;setBusy(true);q('#settings-apply').disabled=true;message('正在保存并回读…');try{const saved=await request('/api/settings',{revision:current.revision,patch:pending});current.config=saved.config;current.revision=saved.revision;current.csrf=saved.csrf;current.hostSynced=saved.hostSynced;current.schedule=saved.schedule;if(q('#schedule-reason'))q('#schedule-reason').textContent=saved.schedule?.reason||'';badges();message(current.hostSynced?'已保存，原鱼塘与 DSH 同步完成。':'已保存并回读；原鱼塘已生效，DSH 同步情况请在原工作台确认。')}catch(e){uncertain=true;message(e.message+' 当前草稿保留。')}finally{q('#settings-confirm').close();q('#settings-apply').disabled=false;setBusy(false)}};
  q('#login-start').onclick=async()=>{if(loading||!current)return;setBusy(true);message('正在向原鱼塘申请二维码…');try{const r=await request('/api/login/start',{});q('#login-poll').disabled=false;q('#login-qr').src=r.qr;q('#login-message').textContent='二维码约三分钟有效；确认后点击检查状态。';q('#login-dialog').showModal();message('请完成扫码。')}catch(e){message(e.message)}finally{setBusy(false)}};
  q('#login-poll').onclick=async()=>{if(loading)return;let complete=false;setBusy(true);q('#login-poll').disabled=true;try{const r=await request('/api/login/poll',{});q('#login-message').textContent=({ok:'登录成功，凭据已由原鱼塘保存。',expired:'二维码已过期，请关闭后重新获取。',scanned:'已扫码，请在手机确认。',unknown:'暂未确认，请稍后检查。'})[r.state]||'等待扫码或手机确认。';if(r.state==='ok'){complete=true;q('#login-poll').disabled=true;message('登录成功。可重新读取设置查看状态。')}}catch(e){q('#login-message').textContent=e.message}finally{setBusy(false);q('#login-poll').disabled=complete}};
  q('#login-close').onclick=()=>q('#login-dialog').close();
- window.addEventListener('beforeunload',e=>{if(dirty||prefillDirty){e.preventDefault();e.returnValue=''}});
+ window.addEventListener('beforeunload',e=>{if(dirty||prefillDirty||mentionsDirty||window.feiyuMediaDirty?.()){e.preventDefault();e.returnValue=''}});
 })();
