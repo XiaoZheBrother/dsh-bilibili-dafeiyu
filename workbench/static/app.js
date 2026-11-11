@@ -104,8 +104,8 @@ function render(){if(!data)return;
  $('#stamp').textContent=`本地读取 ${date(data.capturedAt)} · 展示最近 ${data.limits.artifactWindow} 项任务中的已完成成果`;
 }
 async function refresh(){if(busy)return;busy=true;$('#refresh').disabled=true;$('#notice').textContent='正在读取本地手记…';
- try{const response=await fetch('/api/snapshot',{cache:'no-store'});if(!response.ok)throw new Error('unavailable');data=await response.json();render();$('#notice').textContent=data.warnings.join(' ')}catch{$('#notice').textContent=data?'暂时无法刷新，下面保留上次读取的记录。':'暂时读不到本地记录。请确认只读服务已经启动，再点刷新。'}finally{busy=false;$('#refresh').disabled=false}
+ try{const response=await fetch('/api/snapshot',{cache:'no-store'});if(!response.ok)throw new Error('unavailable');data=await response.json();render();$('#notice').textContent=data.warnings.join(' ');window.dispatchEvent(new Event('feiyu:snapshot'))}catch{$('#notice').textContent=data?'暂时无法刷新，下面保留上次读取的记录。':'暂时读不到本地记录。请确认只读服务已经启动，再点刷新。'}finally{busy=false;$('#refresh').disabled=false;window.dispatchEvent(new Event('feiyu:snapshot'))}
 }
-document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(n=>{n.classList.toggle('active',n===b);if(n===b)n.setAttribute('aria-current','page');else n.removeAttribute('aria-current')});$('#search').value='';render()}));
+window.feiyuRecords={show(next){if(!tabs[next])return;tab=next;$('#search').value='';render();},get data(){return data}};
 $('#search').addEventListener('input',render);$('#refresh').addEventListener('click',refresh);$('#close').addEventListener('click',()=>$('#detail').close());
 refresh();

@@ -31,8 +31,7 @@
   const p=current.policies['feiyu-policy.json'],t=current.policies['share-target.json'];q('#policy-status').textContent=`${p?`现有发送总闸：${p.enabled?'开启':'关闭'}，每天最多 ${p.dailyAttempts} 次发送尝试，间隔至少 ${p.minimumIntervalSeconds} 秒。`:'本地发送总闸信息读取失败，请先检查原服务。'} ${t?`选择性分享对象：${t.name}（UID ${t.uid}）。分享对象与值班章程绑定，本页仅展示。`:''} 点赞、收藏、私信保持现有配置，本页不修改。`;
  }
  async function load(){if(loading)return;if((dirty||prefillDirty)&&!window.confirm('重新读取会丢弃未保存的修改，继续吗？'))return;setBusy(true);message('正在读取现有鱼塘设置…');try{current=await request('/api/settings');dirty=false;prefillDirty=false;uncertain=false;draw();message(current.notSynced.length?'已读取。部分原鱼塘配置未同步到 DSH，请在原工作台检查。':'已读取当前生效设置。')}catch(e){message(e.message)}finally{setBusy(false)}}
- q('#settings-nav').onclick=()=>{q('main>.workspace').hidden=true;q('#settings-page').hidden=false;document.querySelectorAll('.nav').forEach(n=>{n.classList.toggle('active',n===q('#settings-nav'));n.removeAttribute('aria-current')});q('#settings-nav').setAttribute('aria-current','page');if(!current)load()};
- document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{q('main>.workspace').hidden=false;q('#settings-page').hidden=true;q('#settings-nav').classList.remove('active');q('#settings-nav').removeAttribute('aria-current')}));
+ window.feiyuSettingsOpen=()=>{if(!current)load()};
  q('#prefill-form').addEventListener('input',()=>{prefillDirty=true});
  q('#prefill-form').onsubmit=async e=>{
   e.preventDefault();if(!current||loading)return;

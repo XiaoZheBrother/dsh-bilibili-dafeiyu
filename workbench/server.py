@@ -16,7 +16,7 @@ import media_actions as media
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_HOME = Path(os.environ.get('DSH_HOME', str(Path.home()/'.dsh')))
-STATIC = {'/plugins.js': ('plugins.js','text/javascript; charset=utf-8'), '/media.js': ('media.js','text/javascript; charset=utf-8'), '/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
+STATIC = {'/navigation.js': ('navigation.js','text/javascript; charset=utf-8'), '/plugins.js': ('plugins.js','text/javascript; charset=utf-8'), '/media.js': ('media.js','text/javascript; charset=utf-8'), '/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
           '/style.css': ('style.css','text/css; charset=utf-8'),
           '/settings.js': ('settings.js','text/javascript; charset=utf-8'),
           '/assets/moonlit-whale-v1.png': ('assets/moonlit-whale-v1.png','image/png'),

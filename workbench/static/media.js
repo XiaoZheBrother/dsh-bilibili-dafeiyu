@@ -78,7 +78,5 @@
     catch (err) {message.textContent = err.message;}
     finally {sending = false; upload.querySelector('fieldset').disabled = false; load().catch(()=>{});}
   };
-  for (const trigger of [q('#settings-nav'), q('[data-tab="creations"]')]) {
-    trigger.addEventListener('click',()=>load().catch(e=>{message.textContent=e.message;config.querySelector('output').textContent=e.message;}));
-  }
+  window.addEventListener('feiyu:navigation',e=>{if(e.detail.page==='settings'||e.detail.tab==='creations')load().catch(error=>{message.textContent=error.message;config.querySelector('output').textContent=error.message;})});
 })();
