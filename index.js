@@ -1,3 +1,4 @@
+import { installMemoryContext } from './lib/memory-context.mjs'
 import { PEAK_DEFAULTS, validatePeakConfig, peakSchedule } from './lib/peak-schedule.mjs'
 import { GrowthBridge } from './lib/growth-bridge.mjs'
 import { readOnlyBilibili } from './lib/platform.mjs'
@@ -341,6 +342,7 @@ const pondAccount = async () => {
   }
 
   const character = new CharacterStore(join(stateDir, '..', 'feiyu-runtime'))
+  installMemoryContext(ctx)
   const coordinator = new Coordinator(character,{log})
   const syncExperiences = () => collectExperiences(character,join(stateDir,'..'))
   syncExperiences()

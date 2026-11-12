@@ -8,7 +8,7 @@ const input=JSON.parse(readFileSync(0,'utf8'))
 const store=new CharacterStore(join(home,'feiyu-runtime'))
 try {
  let result
- if(input.action==='recall'){collectExperiences(store,home);result={items:store.recall(input.query||'',12,true),relationships:input.subject?store.authored('relationship',input.subject):[],creations:store.authored('creation')}}
+ if(input.action==='recall'){collectExperiences(store,home);result=await store.recallContext(input.query||'',input.subject||'')}
  else if(input.action==='save')result=store.save(input.kind,input.subject,input.payload)
  else if(input.action==='observe')result={id:store.append(input.event)}
  else throw Error('Unknown local action')
