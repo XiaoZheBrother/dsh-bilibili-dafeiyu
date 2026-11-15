@@ -79,7 +79,10 @@ def portrait_snapshot(home):
     # General memories often mix actor and partner speech. Keep them unclassified.
     try:
         config = home / 'feiyu-runtime/config.json'
-        name = json.loads(config.read_text('utf-8-sig')).get('memoryName', '')
+        doc = json.loads(config.read_text('utf-8-sig'))
+        if not isinstance(doc, dict):
+            raise ValueError('invalid memory config')
+        name = doc.get('memoryName', '')
         if isinstance(name, str) and re.fullmatch(r'[\w-]{1,60}', name):
             for path in sorted((home / 'soul-md/memory' / name / 'topics').glob('*.md'))[:MAX_FILES]:
                 if not safe(path):

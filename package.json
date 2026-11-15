@@ -1,6 +1,6 @@
 {
   "name": "dsh-bilibili-dafeiyu",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "让你的大肥鱼 / Agent 运营 B 站账号：浏览视频、回复评论、发送弹幕、管理创作与成长记录的 DSH 工作台。",
   "keywords": [
     "dsh",

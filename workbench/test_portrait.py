@@ -43,6 +43,15 @@ class PortraitTests(unittest.TestCase):
             result=portrait_snapshot(home)
             self.assertEqual(result['entries'],[]);self.assertTrue(result['warnings'])
 
+    def test_non_object_config_returns_warning(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home=Path(temp);root=home/'feiyu-runtime';root.mkdir()
+            for raw in ['null', '[]', '42']:
+                (root/'config.json').write_text(raw)
+                result=portrait_snapshot(home)
+                self.assertEqual(result['entries'], [])
+                self.assertTrue(result['warnings'])
+
     def test_read_only_preview_blocks_all_writes_and_foreign_reads(self):
         with tempfile.TemporaryDirectory() as temp:
             home=Path(temp);http=ThreadingHTTPServer(('127.0.0.1',0),handler_for(home,0,read_only=True))
