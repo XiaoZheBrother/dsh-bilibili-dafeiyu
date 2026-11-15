@@ -1,6 +1,6 @@
 {
   "name": "dsh-bilibili-dafeiyu",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "让你的大肥鱼 / Agent 运营 B 站账号：浏览视频、回复评论、发送弹幕、管理创作与成长记录的 DSH 工作台。",
   "keywords": [
     "dsh",
@@ -48,7 +48,8 @@
     "vendor/bilibili-mcp/*.txt",
     "vendor/bilibili-mcp/LICENSE",
     "docs/agent-guide.md",
-    "llms.txt"
+    "llms.txt",
+    "docs/memory-retrieval.md"
   ],
   "engines": {
     "dsh": ">=0.1.7-rc.1",
@@ -83,7 +84,7 @@
     }
   },
   "scripts": {
-    "test": "node --test test-peak-schedule.mjs test-attention.mjs test-prefill.mjs test-owner.mjs test-character.mjs test-growth-bridge.mjs test-studio.mjs",
+    "test": "node --test test-peak-schedule.mjs test-attention.mjs test-prefill.mjs test-owner.mjs test-character.mjs test-growth-bridge.mjs test-studio.mjs test-memory-selection.mjs",
     "check:upstream": "node --import ./tools/register.mjs selfcheck.mjs && node tools/_check-1016.mjs && node tools/test-migrate.mjs && node tools/test-comment-cap.mjs && node tools/test-reuse-routes.mjs && node tools/test-host-default-model.mjs && node tools/test-guard.mjs && node tools/test-guard-watermark.mjs && node tools/test-duty-workspace.mjs && node tools/test-history.mjs && node tools/test-pond-page.mjs && node tools/test-circle-config.mjs && node tools/test-intent-lines.mjs && node tools/test-likes.mjs && python tools/test-circle.py"
   },
   "author": {
