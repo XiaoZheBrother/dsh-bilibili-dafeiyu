@@ -11,12 +11,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
 from interactions import read_interactions
+from portrait import portrait_snapshot
 from pond import Pond, PondError
 import media_actions as media
 
 HERE = Path(__file__).resolve().parent
 DEFAULT_HOME = Path(os.environ.get('DSH_HOME', str(Path.home()/'.dsh')))
 STATIC = {'/navigation.js': ('navigation.js','text/javascript; charset=utf-8'), '/plugins.js': ('plugins.js','text/javascript; charset=utf-8'), '/media.js': ('media.js','text/javascript; charset=utf-8'), '/': ('index.html','text/html; charset=utf-8'), '/app.js': ('app.js','text/javascript; charset=utf-8'),
+          '/portrait.js': ('portrait.js','text/javascript; charset=utf-8'),
+          '/portrait.css': ('portrait.css','text/css; charset=utf-8'),
           '/style.css': ('style.css','text/css; charset=utf-8'),
           '/settings.js': ('settings.js','text/javascript; charset=utf-8'),
           '/assets/moonlit-whale-v1.png': ('assets/moonlit-whale-v1.png','image/png'),
@@ -146,7 +149,7 @@ def read_snapshot(home):
             'pending':sum(r['state'] in ('pending','running','saved') for r in queue),
             'limits':{'artifactWindow':100,'memoryWindow':40,'publicationWindow':50}}
 
-def handler_for(home,port,pond=None):
+def handler_for(home,port,pond=None,read_only=False):
     pond=pond or Pond(home)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass
@@ -176,6 +179,8 @@ def handler_for(home,port,pond=None):
             if self.headers.get('Sec-Fetch-Site')=='cross-site':
                 return self.respond(403,b'{"error":"cross site denied"}')
             path=urlsplit(self.path).path
+            if path=='/api/portrait':
+                return self.respond(200,json.dumps(portrait_snapshot(home),ensure_ascii=False).encode())
             if path=='/api/plugins':
                 return self.respond(200,json.dumps(plugin_hub.dashboard(home),ensure_ascii=False).encode())
             if path=='/api/media':
@@ -193,6 +198,8 @@ def handler_for(home,port,pond=None):
             filename,content_type=STATIC[path]
             self.respond(200,(HERE/'static'/filename).read_bytes(),content_type)
         def do_POST(self):
+            if read_only:
+                return self.respond(403,b'{"error":"Preview is read-only"}')
             path=self.path
             if path not in ('/api/media/config','/api/media/preview','/api/media/submit','/api/media/status','/api/settings','/api/external-mentions','/api/comment-prefill','/api/login/start','/api/login/poll'):
                 return self.respond(405,b'{"error":"unsupported operation"}')
@@ -237,9 +244,10 @@ def handler_for(home,port,pond=None):
 if __name__=='__main__':
     parser=argparse.ArgumentParser();parser.add_argument('--home',type=Path,default=DEFAULT_HOME);parser.add_argument('--port',type=int,default=3087)
     parser.add_argument('--pond-origin',default='http://127.0.0.1:3086')
+    parser.add_argument('--read-only',action='store_true',help='Reject every write in isolated previews')
     args=parser.parse_args()
-    server=ThreadingHTTPServer(('127.0.0.1',args.port),handler_for(args.home,args.port,Pond(args.home,args.pond_origin)))
-    server.RequestHandlerClass=handler_for(args.home,server.server_port,Pond(args.home,args.pond_origin))
+    server=ThreadingHTTPServer(('127.0.0.1',args.port),handler_for(args.home,args.port,Pond(args.home,args.pond_origin),args.read_only))
+    server.RequestHandlerClass=handler_for(args.home,server.server_port,Pond(args.home,args.pond_origin),args.read_only)
     if os.environ.get('FEIYU_STUDIO_CHILD')=='1':
         import threading,sys
         def parent_closed():
